@@ -322,9 +322,11 @@ function useFloatyPanel() {
     const el = ref.current;
     if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     let lastY = window.scrollY, pos = 0, vel = 0, frame = 0;
-    const MAX = 18;
+    const MAX = 18;          // px the panel may trail behind
+    const STIFFNESS = 0.06;  // lower = slower return (was 0.14)
+    const DAMPING = 0.8;     // velocity kept per frame; lower = less bounce
     const tick = () => {
-      vel = (vel - pos * 0.14) * 0.74;          // spring back toward 0, damped
+      vel = (vel - pos * STIFFNESS) * DAMPING;  // spring back toward 0, damped
       pos = Math.max(-MAX, Math.min(MAX, pos + vel));
       el.style.transform = `translate3d(0, ${pos.toFixed(2)}px, 0)`;
       if (Math.abs(pos) > 0.05 || Math.abs(vel) > 0.05) frame = requestAnimationFrame(tick);
