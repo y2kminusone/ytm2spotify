@@ -11,9 +11,9 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 from .models import Item
-from .normalize import clean_title, parse_upload_title, similarity, variant_of
+from .normalize import COMPILATION, clean_title, parse_upload_title, similarity, variant_of
 
-MATCHER_VERSION = 1
+MATCHER_VERSION = 2  # 2: compilations skip search; accents ignored
 T_AUTO = 0.90    # auto-approve at or above (conservative default, DESIGN §4.3)
 T_REVIEW = 0.60  # below this: not found
 OFFICIAL = {"MUSIC_VIDEO_TYPE_ATV", "MUSIC_VIDEO_TYPE_OFFICIAL_SOURCE_MUSIC"}
@@ -146,6 +146,10 @@ def match(
     """Match one YT Music item. `search(query, kind)` returns Spotify items (cached by the caller)."""
     title, artists, parsed_artist = src.title, src.artists, None
     variant = variant_of(src.title) if src.kind == "track" else None
+
+    # compilations ("[Full Album] …", "TOP300", DJ mixes) can't map to one track: keep them, spend no searches
+    if src.kind == "track" and src.video_type not in OFFICIAL and COMPILATION.search(src.title):
+        return Result("not_found", [], "compilation", None)
 
     # ② classify: user uploads are "Artist - Song (noise)" under an uploader's channel name
     if src.kind == "track" and src.video_type not in OFFICIAL:

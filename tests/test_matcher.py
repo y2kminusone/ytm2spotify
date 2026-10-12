@@ -76,3 +76,11 @@ def test_length_is_a_weaker_signal_for_videos():
     b = yt("track", "Song", ["A"], duration_s=200, video_type="MUSIC_VIDEO_TYPE_ATV")
     cand = sp("track", "1", "Song", ["A"], duration_s=225)
     assert score(a, cand).score > score(b, cand).score
+
+
+def test_compilation_upload_is_kept_without_searching():
+    src = yt("track", "[Full Album] 유령서점 (Ghost Bookstore) - 유령서점 (Ghost Bookstore) / 앨범 전곡 듣기", ["POCLANOS"],
+             video_type="MUSIC_VIDEO_TYPE_UGC")
+    s = fake_search([sp("track", "1", "Ghost Bookstore", ["Ghost Bookstore"])])
+    r = match(src, [], s)
+    assert r.status == "not_found" and s.calls == []

@@ -21,6 +21,9 @@ NOISE = re.compile(
 )
 
 # Words that mean "not the studio recording". Order matters: first hit names the variant.
+# Uploads that bundle many songs; no single Spotify track can stand in for them.
+COMPILATION = re.compile(r"full\s*album|전곡|앨범\s*듣기|playlist|플레이리스트|\btop\s*\d+|\bmix\b|1\s*시간|\b\d+\s*hours?\b|모음", re.I)
+
 VARIANTS: list[tuple[str, re.Pattern]] = [
     ("cover", re.compile(r"\bcover\b|커버|\bcovered by\b", re.I)),
     ("remix", re.compile(r"remix|리믹스|\bflip\b|bootleg|mashup|\bedit\)", re.I)),
