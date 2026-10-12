@@ -46,8 +46,8 @@ const scoreOf = (d: Item) => d.cands[d.chosen]?.score ?? 0;
 export default function App() {
   const q = new URLSearchParams(location.search);  // prototype: ?look=butter&tab=track&filter=all
   const [items, setItems] = useState(initialItems);
-  const [kind, setKind] = useState<Kind>((q.get('tab') as Kind) || 'track');
-  const [filter, setFilter] = useState<Filter>((q.get('filter') as Filter) || 'todo');
+  const [kind, setKind] = useState<Kind>(() => (q.get('tab') as Kind) in KIND_LABEL ? (q.get('tab') as Kind) : 'track');
+  const [filter, setFilter] = useState<Filter>(() => (FILTERS as readonly string[]).includes(q.get('filter') ?? '') ? (q.get('filter') as Filter) : 'todo');
   const [cut, setCut] = useState(Number(q.get('cut')) || 0.9);
   const [previewing, setPreviewing] = useState(q.has('cut'));
   const [sel, setSel] = useState(0);
@@ -92,6 +92,14 @@ export default function App() {
 
   const total = (sample.totals as Record<Kind, number>)[kind];
   const panelRef = useFloatyPanel();
+
+  // Keep the view (tab + filter) in the URL so a refresh, back button or shared link lands on the same view.
+  useEffect(() => {
+    const u = new URL(location.href);
+    u.searchParams.set('tab', kind);
+    u.searchParams.set('filter', filter);
+    history.replaceState(null, '', u);
+  }, [kind, filter]);
 
   return (
     <Theme theme={neutralTheme} mode="light">
