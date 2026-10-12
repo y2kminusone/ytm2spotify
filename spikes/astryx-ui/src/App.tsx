@@ -11,7 +11,6 @@ import {Step, Stepper} from '@astryxdesign/core/Stepper';
 import {Tab, TabList} from '@astryxdesign/core/TabList';
 import {Text} from '@astryxdesign/core/Text';
 import {ToggleButton} from '@astryxdesign/core/ToggleButton';
-import {Token} from '@astryxdesign/core/Token';
 import sample from './sample.json';
 import './App.css';
 
@@ -33,7 +32,6 @@ const FILTERS = ['todo', 'auto', 'not_found', 'exists', 'all'] as const;
 type Filter = (typeof FILTERS)[number];
 const FILTER_LABEL: Record<Filter, string> = {todo: '확인 필요', auto: '자동으로 맞춤', not_found: 'Spotify에 없음', exists: '이미 있음', all: '전체'};
 const DECISION_NOTE: Record<Decision, string> = {pending: '', accept: 'Spotify에 저장할게요', skip: '옮기지 않아요', preserve: 'YT Music 보관 목록에 모아둘게요'};
-const WHY_COLOR = {ok: 'green', warn: 'orange', bad: 'red'} as const;
 
 const initialItems = (): Item[] =>
   (sample.items as unknown as Omit<Item, 'id' | 'chosen' | 'decision'>[]).map((d, id) => ({
@@ -202,6 +200,13 @@ function Cover({src, alt, round, variant}: {src: string | null; alt: string; rou
   );
 }
 
+// 받침 있으면 '이라', 없으면 '라' (한글이 아니면 '이라')
+function iraJosa(word: string) {
+  const ch = word.trim().slice(-1).charCodeAt(0);
+  if (ch < 0xac00 || ch > 0xd7a3) return '이라';
+  return (ch - 0xac00) % 28 ? '이라' : '라';
+}
+
 function Meta({text}: {text: string}) {
   const parts = text.split(' · ').filter(Boolean);
   return <span className="meta">{parts.map(p => <span key={p}>{p}</span>)}</span>;
@@ -214,11 +219,20 @@ function PairRow({d, selected, willAccept, cutLabel, isOpen, onSelect, onToggle,
   const c = d.cands[d.chosen];
   const round = d.kind === 'artist';
   const score = c ? Math.round(c.score * 100) : null;
+  // problems first, then what matched; the upload badge lives here too so both sides stay symmetric
+  const rank = {bad: 0, warn: 1, ok: 2} as const;
+  const isVariant = (t: string) => /커버|리믹스|다른 버전/.test(t);
+  const variant = c?.why.find(([t]) => isVariant(t))?.[0].replace(/^다른 버전 \((.*)\)$/, '$1');
+  const reasons: Why[] = [
+    ...(d.src.vt === 'UGC' ? [['사용자 업로드 영상', 'warn'] as Why] : []),
+    ...(c?.why.filter(([t]) => !t.startsWith('사용자 업로드') && !isVariant(t) && t !== '원곡으로 대체') ?? []),
+  ].sort((a, b) => rank[a[1]] - rank[b[1]]);
   return (
     <li className={`pair status-${d.status} decision-${d.decision} ${selected ? 'is-selected' : ''} ${willAccept ? 'is-preview' : ''}`} onClick={onSelect}>
       <div className="head">
         <span className="verdict">{STATUS_LABEL[d.status]}</span>
         {score !== null && <span className="match">일치도 {score}%</span>}
+        {d.status === 'substitute' && variant && <span className="variant-note">{variant}{iraJosa(variant)} 원곡으로 대체해요</span>}
         {willAccept && <span className="will-accept">{cutLabel} 이상이라 일괄 승인 대상이에요</span>}
         {d.decision !== 'pending' && <span className="chosen-note">{DECISION_NOTE[d.decision]}</span>}
       </div>
@@ -227,10 +241,7 @@ function PairRow({d, selected, willAccept, cutLabel, isOpen, onSelect, onToggle,
         <div className="names">
           <Text weight="semibold" display="block">{d.src.title}</Text>
           <Text type="supporting" maxLines={1}>{d.src.artists || 'YT Music 구독'}</Text>
-          <span className="meta-row">
-            {d.src.vt === 'UGC' && <span className="ugc">사용자 업로드</span>}
-            {d.src.meta && <Meta text={d.src.meta} />}
-          </span>
+          <span className="meta-row"><Meta text={d.kind === 'track' && d.src.meta && !d.src.meta.includes(' · ') ? `앨범 정보 없음 · ${d.src.meta}` : d.src.meta || ' '} /></span>
         </div>
       </div>
 
@@ -243,11 +254,7 @@ function PairRow({d, selected, willAccept, cutLabel, isOpen, onSelect, onToggle,
             <div className="names">
               <Text weight="semibold" display="block">{c.title}</Text>
               <Text type="supporting" maxLines={1}>{c.artists || 'Spotify 아티스트'}</Text>
-              {c.meta && <span className="meta-row"><Meta text={c.meta} /></span>}
-              <div className="why">
-                {c.why.filter(([t, k]) => k !== 'ok' && !t.startsWith('사용자 업로드')).map(([t, k]) => <Token key={t} size="sm" label={t} color={WHY_COLOR[k]} />)}
-                <span className="why-ok">{c.why.filter(([, k]) => k === 'ok').map(([t]) => t).join(', ')}</span>
-              </div>
+              <span className="meta-row"><Meta text={c.meta || ' '} /></span>
             </div>
           </>
         ) : (
@@ -260,6 +267,14 @@ function PairRow({d, selected, willAccept, cutLabel, isOpen, onSelect, onToggle,
           </>
         )}
       </div>
+
+      {reasons.length > 0 && (
+        <ul className="reasons" aria-label="판단 근거">
+          {reasons.map(([t, k]) => (
+            <li key={t} className={`reason r-${k}`}><span className="r-icon" aria-hidden>{k === 'ok' ? '✓' : '!'}</span>{t}</li>
+          ))}
+        </ul>
+      )}
 
       <div className="decide" onClick={e => e.stopPropagation()}>
         <div className="choices">
