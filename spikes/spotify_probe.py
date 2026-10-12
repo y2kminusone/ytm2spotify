@@ -119,18 +119,18 @@ def cmd_probe() -> None:
         r = call("GET", "/search", params={"q": "IU", "type": "artist", "limit": limit})
         n = len(r.json().get("artists", {}).get("items", [])) if r.ok else None
         print(f"  limit={limit:<3} -> HTTP {r.status_code}, items={n}")
-    r = call("GET", "/search", params={"q": "album:Palette artist:IU", "type": "album", "limit": 3, "market": "from_token"})
+    r = call("GET", "/search", params={"q": "album:Palette artist:IU", "type": "album", "limit": 3, "market": "KR"})
     if r.ok:
         a = r.json()["albums"]["items"][0]
         print("  album fields available:", sorted(a.keys()))
-    r = call("GET", "/search", params={"q": "track:Blueming artist:IU", "type": "track", "limit": 1, "market": "from_token"})
+    r = call("GET", "/search", params={"q": "track:Blueming artist:IU", "type": "track", "limit": 1, "market": "KR"})
     if r.ok:
         t = r.json()["tracks"]["items"][0]
         print("  track has external_ids (ISRC):", t.get("external_ids"))
 
 
 def cmd_write_test(kind: str, query: str, keep: bool) -> None:
-    r = call("GET", "/search", params={"q": query, "type": kind, "limit": 1, "market": "from_token"})
+    r = call("GET", "/search", params={"q": query, "type": kind, "limit": 1, "market": "KR"})
     r.raise_for_status()
     item = r.json()[kind + "s"]["items"][0]
     uri = item["uri"]
