@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Theme} from '@astryxdesign/core/theme';
 import {neutralTheme} from '@astryxdesign/theme-neutral/built';
 import {Button} from '@astryxdesign/core/Button';
@@ -79,6 +79,10 @@ export default function App() {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState<'save' | 'preserve' | null>(null);
   const [leaving, setLeaving] = useState<Set<string>>(new Set());
+  // Render the list in pages: hundreds of cards at once made switching views feel sluggish.
+  const PAGE = 30;
+  const [shown, setShown] = useState(PAGE);
+  const sentinel = useRef<HTMLLIElement>(null);
 
   const load = useCallback(async () => {
     try {
@@ -160,6 +164,15 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   });
 
+  useEffect(() => { setShown(PAGE); }, [kind, filter, view]);
+  useEffect(() => { if (sel >= shown - 5) setShown(n => n + PAGE); }, [sel, shown]);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el) return;
+    const io = new IntersectionObserver(es => { if (es[0].isIntersecting) setShown(n => n + PAGE); }, {rootMargin: '600px'});
+    io.observe(el);
+    return () => io.disconnect();
+  });
   useEffect(() => { document.querySelector('.pair.is-selected')?.scrollIntoView({block: 'nearest'}); }, [sel]);
   useEffect(() => {
     const u = new URL(location.href);
@@ -263,8 +276,8 @@ export default function App() {
 
             <ol className="pairs">
               {rows.length === 0 && <li className="empty"><Text color="secondary">{t.empty}</Text></li>}
-              {rows.map((d, i) => (
-                <PairRow key={d.key} d={d} t={t} dup={dupOf(d)} selected={i === sel} isLeaving={leaving.has(d.key) && !matchesFilter(d, filter)} willAccept={previewing && bulk.includes(d)} cut={Math.round(cut * 100)}
+              {rows.slice(0, shown).map((d, i) => (
+                <PairRow key={d.key} index={i} d={d} t={t} dup={dupOf(d)} selected={i === sel} isLeaving={leaving.has(d.key) && !matchesFilter(d, filter)} willAccept={previewing && bulk.includes(d)} cut={Math.round(cut * 100)}
                   isOpen={open === d.key}
                   onSelect={() => setSel(i)} onToggle={() => setOpen(o => (o === d.key ? null : d.key))}
                   onDecide={k => toggle(d, k)}
@@ -275,6 +288,7 @@ export default function App() {
                     return r.cands.length;
                   }} />
               ))}
+              {rows.length > shown && <li ref={sentinel} className="more" aria-hidden />}
             </ol>
           </main>
 
@@ -451,8 +465,12 @@ function metaOf(t: T, s: Src, side: 'from' | 'to') {
   return [];
 }
 
-function PairRow({d, t, dup, selected, isLeaving, willAccept, cut, isOpen, onSelect, onToggle, onDecide, onPick, onSearch}: {
-  d: Rec; t: T; dup: 'library' | 'other' | null; selected: boolean; isLeaving: boolean; willAccept: boolean; cut: number; isOpen: boolean;
+const PairRow = memo(PairRowImpl, (a, b) =>
+  a.d === b.d && a.t === b.t && a.dup === b.dup && a.selected === b.selected && a.isLeaving === b.isLeaving &&
+  a.willAccept === b.willAccept && a.cut === b.cut && a.isOpen === b.isOpen && a.index === b.index);
+
+function PairRowImpl({d, t, dup, selected, isLeaving, willAccept, cut, isOpen, onSelect, onToggle, onDecide, onPick, onSearch}: {
+  index: number; d: Rec; t: T; dup: 'library' | 'other' | null; selected: boolean; isLeaving: boolean; willAccept: boolean; cut: number; isOpen: boolean;
   onSelect: () => void; onToggle: () => void; onDecide: (k: Decision) => void; onPick: (j: number) => void;
   onSearch: (q: string) => Promise<number>;
 }) {
