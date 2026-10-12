@@ -12,9 +12,6 @@
   font-family: var(--font-family-body);
   word-break: keep-all;
 }
-.look-butter {
-  --font-family-heading: 'Outfit', var(--hangul), system-ui, sans-serif;
-}
 
 /* ---------- top bar ---------- */
 .top {
@@ -51,7 +48,7 @@
 .pairs { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
 .pair {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 88px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 104px minmax(0, 1fr) auto;
   align-items: center; gap: 16px;
   padding: 14px 16px;
   background: var(--color-background-card);
@@ -91,26 +88,24 @@
 .cover-sp .source-dot { background: var(--sp); }
 .cover-empty { background: transparent; border: 1.5px dashed var(--color-border-emphasized); box-shadow: none; }
 .cover-empty .source-dot { display: none; }
-.status-substitute .to .cover { outline: 2px dashed var(--color-warning); outline-offset: 2px; }
 
-/* the link between the two sides: score + verdict on a line */
-.link { position: relative; display: grid; justify-items: center; gap: 2px; text-align: center; }
-.link::before {
-  content: ''; position: absolute; top: 14px; left: -12px; right: -12px; height: 2px; z-index: 0;
-  background: var(--line, var(--color-border-emphasized)); border-radius: 2px;
+/* the link: verdict first, match % second */
+.link { display: grid; justify-items: center; gap: 4px; text-align: center; }
+.arrow { width: 100%; height: 10px; position: relative; }
+.arrow::before { content: ''; position: absolute; left: 4px; right: 8px; top: 4px; height: 2px; background: var(--color-border-emphasized); }
+.arrow::after {
+  content: ''; position: absolute; right: 4px; top: 0; border: 5px solid transparent;
+  border-left: 7px solid var(--color-border-emphasized); border-right: 0;
 }
-.score {
-  position: relative; z-index: 1; min-width: 44px; padding: 2px 8px; border-radius: 999px;
-  background: var(--color-background-card); border: 2px solid var(--line, var(--color-border-emphasized));
-  font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; line-height: 1.5;
+.verdict {
+  padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  background: var(--tone-bg, var(--color-background-muted)); color: var(--tone-fg, var(--color-text-secondary));
 }
-.status { font-size: 11px; color: var(--color-text-secondary); white-space: nowrap; }
-.status-auto      { --line: var(--color-success); }
-.status-review    { --line: var(--color-warning); }
-.status-substitute{ --line: var(--color-warning); }
-.status-not_found { --line: var(--color-error); }
-.status-not_found .link::before { background: repeating-linear-gradient(90deg, var(--color-error) 0 4px, transparent 4px 8px); }
-.status-exists    { --line: var(--color-border-emphasized); }
+.match { font-size: 11px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.status-auto       { --tone-bg: var(--color-success-muted); --tone-fg: var(--color-text-primary); }
+.status-review,
+.status-substitute { --tone-bg: var(--color-warning-muted); --tone-fg: var(--color-text-primary); }
+.status-not_found  { --tone-bg: var(--color-error-muted);   --tone-fg: var(--color-text-primary); }
 
 .decide { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
 .decide .d button { box-shadow: inset 0 0 0 1px var(--color-border-emphasized); }
@@ -161,7 +156,7 @@
   .pair { grid-template-columns: minmax(0, 1fr) 72px; }
   .pair .to { grid-column: 1 / -1; }
   .pair .decide { grid-column: 1 / -1; justify-content: flex-start; }
-  .link::before { display: none; }
+  .arrow { display: none; }
   .keys { display: none; }
   .dock-in { padding: 12px 16px; }
 }

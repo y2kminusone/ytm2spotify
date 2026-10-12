@@ -1,10 +1,10 @@
 import {useEffect, useMemo, useState} from 'react';
 import {Theme} from '@astryxdesign/core/theme';
 import {neutralTheme} from '@astryxdesign/theme-neutral/built';
-import {butterTheme} from '@astryxdesign/theme-butter/built';
 import {Button} from '@astryxdesign/core/Button';
 import {Heading} from '@astryxdesign/core/Heading';
 import {Kbd} from '@astryxdesign/core/Kbd';
+import {Icon} from '@astryxdesign/core/Icon';
 import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
 import {Slider} from '@astryxdesign/core/Slider';
 import {Step, Stepper} from '@astryxdesign/core/Stepper';
@@ -46,7 +46,6 @@ const scoreOf = (d: Item) => d.cands[d.chosen]?.score ?? 0;
 
 export default function App() {
   const q = new URLSearchParams(location.search);  // prototype: ?look=butter&tab=track&filter=all
-  const [look, setLook] = useState<'neutral' | 'butter'>(q.get('look') === 'butter' ? 'butter' : 'neutral');
   const [items, setItems] = useState(initialItems);
   const [kind, setKind] = useState<Kind>((q.get('tab') as Kind) || 'track');
   const [filter, setFilter] = useState<Filter>((q.get('filter') as Filter) || 'todo');
@@ -93,20 +92,14 @@ export default function App() {
   const total = (sample.totals as Record<Kind, number>)[kind];
 
   return (
-    <Theme theme={look === 'neutral' ? neutralTheme : butterTheme} mode="light">
-      <div className={`page look-${look}`}>
+    <Theme theme={neutralTheme} mode="light">
+      <div className="page">
         <header className="top">
           <div className="brand"><span className="mark" aria-hidden />ytm2spotify</div>
           <div className="stepper">
             <Stepper activeStep={3} density="compact" horizontalOptions={{minimumStepWidth: 84, collapsedVariant: 'withLabel'}}>
               {['연결', '불러오기', '매칭', '검토', '저장', '결과'].map((l, i) => <Step key={l} step={i} label={l} />)}
             </Stepper>
-          </div>
-          <div className="look-switch">
-            <SegmentedControl label="시안 테마" size="sm" value={look} onChange={v => setLook(v as 'neutral' | 'butter')}>
-              <SegmentedControlItem value="neutral" label="시안 A" />
-              <SegmentedControlItem value="butter" label="시안 B" />
-            </SegmentedControl>
           </div>
         </header>
 
@@ -223,8 +216,9 @@ function PairRow({d, selected, isOpen, onSelect, onToggle, onDecide, onPick}: {
       </div>
 
       <div className="link" aria-label={c ? `일치도 ${score}점, ${STATUS_LABEL[d.status]}` : STATUS_LABEL[d.status]}>
-        <span className="score">{score ?? '–'}</span>
-        <span className="status">{STATUS_LABEL[d.status]}</span>
+        <span className="arrow" aria-hidden />
+        <span className="verdict">{STATUS_LABEL[d.status]}</span>
+        {score !== null && <span className="match">일치도 {score}%</span>}
       </div>
 
       <div className="side to">
@@ -255,7 +249,7 @@ function PairRow({d, selected, isOpen, onSelect, onToggle, onDecide, onPick}: {
         {c && <span className="d d-accept"><ToggleButton size="sm" label="승인" isPressed={d.decision === 'accept'} onPressedChange={() => onDecide('accept')} /></span>}
         <span className="d d-skip"><ToggleButton size="sm" label="건너뛰기" isPressed={d.decision === 'skip'} onPressedChange={() => onDecide('skip')} /></span>
         <span className="d d-preserve"><ToggleButton size="sm" label="보관" isPressed={d.decision === 'preserve'} onPressedChange={() => onDecide('preserve')} /></span>
-        <Button size="sm" variant="ghost" label={d.cands.length > 1 ? `다른 후보 ${d.cands.length - 1}` : '직접 검색'} onClick={onToggle} />
+        <Button size="sm" variant="ghost" icon={<Icon icon="search" />} label={d.cands.length > 1 ? `다른 후보 ${d.cands.length - 1}개` : '다른 곡 찾기'} onClick={onToggle} />
       </div>
 
       {isOpen && (
