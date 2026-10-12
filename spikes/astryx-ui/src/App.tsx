@@ -322,7 +322,7 @@ function useFloatyPanel() {
     const el = ref.current;
     if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     let lastY = window.scrollY, pos = 0, vel = 0, frame = 0;
-    const MAX = 18;          // px the panel may trail behind
+    const MAX = 12;          // px the panel may trail behind (was 18)
     const STIFFNESS = 0.06;  // lower = slower return (was 0.14)
     const DAMPING = 0.8;     // velocity kept per frame; lower = less bounce
     const tick = () => {
@@ -335,7 +335,7 @@ function useFloatyPanel() {
     const onScroll = () => {
       if (window.innerWidth <= 1080) return;  // collapsed bottom bar on narrow screens stays still
       const y = window.scrollY;
-      vel += Math.max(-6, Math.min(6, -(y - lastY) * 0.12));  // lag behind the scroll direction
+      vel += Math.max(-4, Math.min(4, -(y - lastY) * 0.08));  // lag behind the scroll direction (was ±6, 0.12)
       lastY = y;
       el.classList.toggle('is-scrolled', y > 40);
       if (!frame) frame = requestAnimationFrame(tick);
