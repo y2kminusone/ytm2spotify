@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ytm2spotify"
+version = "0.0.1"
+description = "Move your YouTube Music library to Spotify — review every match side by side before saving."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+    "ytmusicapi==1.12.3",  # unofficial API: pin and upgrade deliberately
+    "requests>=2.31",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+ytm2spotify = "ytm2spotify.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ytm2spotify"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
