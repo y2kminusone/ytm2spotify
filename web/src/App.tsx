@@ -42,7 +42,7 @@ const KINDS: Kind[] = ['album', 'artist', 'track'];
 // Filters follow the user's decision, not the matcher's verdict: "to check" means "I haven't decided yet".
 const FILTERS = ['todo', 'accept', 'preserve', 'skip', 'all'] as const;
 type Filter = (typeof FILTERS)[number];
-const LEAVE_MS = 650;  // a decided row lingers briefly (and fades) so the user sees where it went
+const LEAVE_MS = 280;  // a decided row fades out quickly so the user sees it went (650ms felt sluggish)
 
 const matchesFilter = (d: Rec, f: Filter) =>
   f === 'all' || (f === 'todo' ? d.decision === 'pending' : d.decision === f);

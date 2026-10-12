@@ -346,10 +346,9 @@
 .search { display: grid; gap: 6px; }
 
 /* a decided row fades and collapses out of the "to check" list */
-.pair.is-leaving { animation: leave .65s ease-in forwards; pointer-events: none; }
+.pair.is-leaving { animation: leave .28s cubic-bezier(.4, 0, 1, 1) forwards; pointer-events: none; }
 @keyframes leave {
-  0%, 40% { opacity: 1; }
-  100% { opacity: 0; transform: translateX(24px); }
+  to { opacity: 0; transform: translateX(14px); }
 }
 @media (prefers-reduced-motion: reduce) { .pair.is-leaving { animation: none; opacity: .4; } }
 
