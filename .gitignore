@@ -8,3 +8,5 @@ build/
 # local credentials / data never committed
 *.local.json
 spikes/output/
+node_modules/
+spikes/astryx-ui/dist/

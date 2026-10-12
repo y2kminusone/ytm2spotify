@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>검토 화면 시안</title>
+<style>
+:root{
+  --bg:#f6f6f4; --panel:#fff; --ink:#1b1b1a; --muted:#6b6b66; --line:#e4e3de;
+  --accent:#1db954; --accent-ink:#0b5d2a; --warn:#b7791f; --warn-bg:#fff6e0;
+  --bad:#c0392b; --bad-bg:#fdecea; --ok-bg:#e8f7ee; --sel:#eef4ff; --sel-line:#5b8def;
+  --chip:#efeee9; --ytm:#ff0033;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121212; --panel:#1b1b1b; --ink:#ececec; --muted:#a0a0a0; --line:#2c2c2c;
+    --accent:#1ed760; --accent-ink:#7ee2a3; --warn:#e0a84a; --warn-bg:#2f2614;
+    --bad:#ef7b6e; --bad-bg:#331b18; --ok-bg:#14291c; --sel:#1a2436; --sel-line:#6c9cff; --chip:#262626;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121212; --panel:#1b1b1b; --ink:#ececec; --muted:#a0a0a0; --line:#2c2c2c;
+  --accent:#1ed760; --accent-ink:#7ee2a3; --warn:#e0a84a; --warn-bg:#2f2614;
+  --bad:#ef7b6e; --bad-bg:#331b18; --ok-bg:#14291c; --sel:#1a2436; --sel-line:#6c9cff; --chip:#262626;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI","Malgun Gothic",sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:16px 16px 120px}
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.logo{font-weight:800;font-size:18px;letter-spacing:-.3px}
+.logo b{color:var(--ytm)} .logo i{font-style:normal;color:var(--accent)}
+.steps{display:flex;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.steps span{padding:3px 9px;border-radius:99px;background:var(--chip)}
+.steps .done{color:var(--accent-ink)} .steps .now{background:var(--ink);color:var(--bg);font-weight:700}
+.note{margin-left:auto;font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:12px;overflow-x:auto}
+.tab{padding:10px 14px;border:0;background:none;color:var(--muted);font:inherit;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:var(--ink);border-color:var(--ink)}
+.tab small{font-weight:400;margin-left:4px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:99px;padding:5px 11px;font:inherit;font-size:13px;cursor:pointer}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip .n{opacity:.65;margin-left:3px}
+.bulk{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.bulk input[type=range]{width:160px;accent-color:var(--accent)}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:6px 11px;font:inherit;font-size:13px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#04120a;font-weight:700}
+.btn:disabled{opacity:.45;cursor:default}
+.group{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--warn-bg);border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:13px}
+.list{display:flex;flex-direction:column;gap:6px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+.row.sel{border-color:var(--sel-line);background:var(--sel);box-shadow:0 0 0 1px var(--sel-line)}
+.row.dim{opacity:.55}
+.item{display:flex;gap:10px;align-items:center;min-width:0}
+.art{width:40px;height:40px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff}
+.art.ytm{background:linear-gradient(135deg,#ff4d6d,#c9184a)} .art.sp{background:linear-gradient(135deg,#1ed760,#0f7a37)}
+.art.none{background:var(--chip);color:var(--muted)}
+.t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.txt{min-width:0}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:4px;vertical-align:1px}
+.b-ugc{background:var(--warn-bg);color:var(--warn)} .b-atv{background:var(--chip);color:var(--muted)}
+.score{text-align:center}
+.score .v{font-weight:800;font-size:15px}
+.score .l{font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px}
+.st-auto .l{background:var(--ok-bg);color:var(--accent-ink)}
+.st-review .l{background:var(--warn-bg);color:var(--warn)}
+.st-substitute .l{background:var(--warn-bg);color:var(--warn)}
+.st-not_found .l{background:var(--bad-bg);color:var(--bad)}
+.st-exists .l{background:var(--chip);color:var(--muted)}
+.why{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.why span{font-size:11px;padding:1px 6px;border-radius:4px;background:var(--chip);color:var(--muted)}
+.why .ok{background:var(--ok-bg);color:var(--accent-ink)} .why .warn{background:var(--warn-bg);color:var(--warn)} .why .bad{background:var(--bad-bg);color:var(--bad)}
+.alts{font-size:12px;color:var(--sel-line);margin-top:3px;background:none;border:0;padding:0;cursor:pointer;font:inherit;font-size:12px}
+.cands{grid-column:1/-1;display:none;border-top:1px dashed var(--line);padding-top:8px;margin-top:2px}
+.row.open .cands{display:block}
+.cand{display:flex;align-items:center;gap:10px;padding:6px;border-radius:8px}
+.cand:hover{background:var(--chip)} .cand.chosen{outline:2px solid var(--accent)}
+.cand .sc{margin-left:auto;font-weight:700;font-size:13px}
+.search{display:flex;gap:6px;margin-top:6px}
+.search input{flex:1;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:6px 9px;font:inherit}
+.dec{display:flex;gap:4px}
+.dec button{border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:7px;padding:5px 8px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+.dec button kbd{font:inherit;font-size:10px;opacity:.6;margin-left:3px}
+.dec .on.accept{background:var(--accent);border-color:var(--accent);color:#04120a;font-weight:700}
+.dec .on.skip{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.dec .on.preserve{background:var(--warn);border-color:var(--warn);color:#fff}
+footer{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line)}
+footer .in{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.tot{display:flex;gap:14px;flex-wrap:wrap;font-size:13px}
+.tot b{font-size:15px}
+.keys{font-size:12px;color:var(--muted)}
+footer .btn.primary{margin-left:auto;padding:9px 16px;font-size:14px}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:.2s;pointer-events:none}
+.toast.show{opacity:1}
+@media (max-width:760px){
+  .row{grid-template-columns:minmax(0,1fr) 56px;}
+  .row>.item.to{grid-column:1/-1}
+  .row>.dec{grid-column:1/-1}
+  .keys{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><b>ytm</b>2<i>spotify</i></div>
+    <div class="steps">
+      <span class="done">✓ 연결</span><span class="done">✓ 불러오기</span><span class="done">✓ 매칭</span>
+      <span class="now">4 검토</span><span>5 적용</span><span>6 결과</span>
+    </div>
+    <div class="note">시안 · 샘플 데이터</div>
+  </header>
+
+  <nav class="tabs" id="tabs"></nav>
+  <div class="filters" id="filters"></div>
+
+  <div class="bulk">
+    <span>점수</span>
+    <input type="range" id="th" min="0.70" max="1.00" step="0.01" value="0.90">
+    <b id="thv">0.90</b><span>이상 모두</span>
+    <button class="btn" id="bulkBtn">승인</button>
+    <span class="s" id="bulkNote"></span>
+  </div>
+
+  <div id="group"></div>
+  <div class="list" id="list"></div>
+</div>
+
+<footer><div class="in">
+  <div class="tot" id="tot"></div>
+  <div class="keys">↑↓ 이동 · Y 승인 · N 건너뛰기 · P 보존 · Enter 후보 펼치기</div>
+  <button class="btn primary" id="apply">Spotify에 적용</button>
+</div></footer>
+<div class="toast" id="toast"></div>
+
+<script>
+const TABS = [
+  {k:'album', label:'앨범', total:218},
+  {k:'artist', label:'아티스트', total:8},
+  {k:'track', label:'좋아요 곡', total:1250},
+];
+const STATUS = {
+  all:{label:'전체'}, review:{label:'검토 필요'}, substitute:{label:'대체곡'},
+  auto:{label:'자동 매칭'}, not_found:{label:'못 찾음'}, exists:{label:'이미 있음'},
+};
+const ST_LABEL = {auto:'자동', review:'검토', substitute:'대체곡', not_found:'없음', exists:'보유'};
+
+// why: [text, ok|warn|bad]
+const C = (title, artists, meta, score, why) => ({title, artists, meta, score, why});
+let DATA = [
+  // albums
+  {kind:'album', src:{title:'Palette', artists:'IU', meta:'2017 · 10곡'}, status:'auto',
+   cands:[C('Palette','IU','2017 · 10곡',0.98,[['앨범명 일치','ok'],['아티스트 일치','ok'],['연도 일치','ok'],['트랙 수 일치','ok']])]},
+  {kind:'album', src:{title:'TEAM BABY', artists:'The Black Skirts', meta:'2017 · 12곡'}, status:'auto',
+   cands:[C('TEAM BABY','검정치마','2017 · 12곡',0.95,[['앨범명 일치','ok'],['별칭 일치 (한/영)','ok'],['일반판 우선','ok']]),
+          C('TEAM BABY (Deluxe Edition)','검정치마','2018 · 15곡',0.82,[['판 정보 다름','warn'],['트랙 수 다름','warn']])]},
+  {kind:'album', src:{title:'모래내판타지 Moraenae Fantasy', artists:'구남과여라이딩스텔라', meta:'2009 · 11곡'}, status:'review',
+   cands:[C('Moraenae Fantasy','Goonamguayeoridingstella','2009 · 11곡',0.84,[['별칭으로 일치','ok'],['아티스트 로마자 표기','warn'],['트랙 수 일치','ok']])]},
+  {kind:'album', src:{title:'Nurture', artists:'Porter Robinson', meta:'2021 · 14곡'}, status:'auto',
+   cands:[C('Nurture','Porter Robinson','2021 · 14곡',0.99,[['완전 일치','ok']])]},
+  {kind:'album', src:{title:'탕아 TANG-A', artists:'뱃사공 Bassagong', meta:'2018 · 9곡'}, status:'exists',
+   cands:[C('탕아 TANG-A','Bassagong','2018 · 9곡',1,[['이미 내 Spotify 보관함에 있음','ok']])]},
+  {kind:'album', src:{title:'사랑하는 사람들을 위한 지침서', artists:'BIBI', meta:'2022 · 9곡'}, status:'review',
+   cands:[C('Lowlife Princess: Noir','BIBI','2022 · 13곡',0.71,[['앨범명 다름','bad'],['아티스트 일치','ok']]),
+          C('사랑하는 사람들을 위한 지침서 (Live)','BIBI','2023 · 9곡',0.69,[['변형: Live','warn']])]},
+  // artists
+  {kind:'artist', src:{title:'Porter Robinson', artists:'', meta:'구독'}, status:'auto',
+   cands:[C('Porter Robinson','','아티스트',0.99,[['이름 일치','ok'],['검색 1위','ok']])]},
+  {kind:'artist', src:{title:'Tokyo Incidents', artists:'', meta:'구독'}, status:'auto',
+   cands:[C('Tokyo Jihen','','아티스트',0.93,[['별칭 일치 (東京事変)','ok'],['보관함 앨범 아티스트','ok']])]},
+  {kind:'artist', src:{title:'Hyakkei', artists:'', meta:'구독'}, status:'review',
+   cands:[C('Hyakkei','','아티스트 · 포스트록',0.88,[['이름 일치','ok'],['보관함 앨범 아티스트 +','ok']]),
+          C('Hyakkei','','아티스트 · J-pop',0.80,[['이름 일치','ok'],['동명이인','warn']])]},
+  {kind:'artist', src:{title:'Yeol Eum Son', artists:'', meta:'구독'}, status:'auto',
+   cands:[C('손열음 Yeol Eum Son','','아티스트',0.94,[['별칭 일치 (한/영)','ok']])]},
+  {kind:'artist', src:{title:'Lofi Girl', artists:'', meta:'구독'}, status:'exists',
+   cands:[C('Lofi Girl','','아티스트',1,[['이미 팔로우 중','ok']])]},
+  // tracks
+  {kind:'track', src:{title:'Blueming', artists:'IU', meta:'Love poem · 3:37', vt:'ATV'}, status:'auto',
+   cands:[C('Blueming','IU','Love poem · 3:37',0.99,[['곡명 일치','ok'],['길이 0초 차','ok'],['앨범 일치','ok']])]},
+  {kind:'track', src:{title:'Labi Siffre - My Song (Official HD Music Video)', artists:'DemonMusicGroup', meta:'3:21', vt:'UGC'}, status:'review',
+   cands:[C('My Song','Labi Siffre','Remember My Song · 3:18',0.97,[['제목 파싱: 아티스트 - 곡명','ok'],['길이 3초 차','ok'],['UGC라 확인 필요','warn']])]},
+  {kind:'track', src:{title:'Post Malone - Circles (cover by Zior Park, Sion Jung, …)', artists:'Zior Park', meta:'3:41', vt:'UGC'}, status:'substitute',
+   cands:[C('Circles','Post Malone',"Hollywood's Bleeding · 3:35",0.96,[['변형 감지: cover','warn'],['원곡으로 대체','warn']])]},
+  {kind:'track', src:{title:'JENNIE (제니) - MANTRA (CRAZY ver.)', artists:'JENNIE', meta:'2:49', vt:'UGC'}, status:'substitute',
+   cands:[C('Mantra','JENNIE','Ruby · 2:16',0.95,[['변형 감지: ver.','warn'],['길이 33초 차','bad']])]},
+  {kind:'track', src:{title:'[온스테이지2.0] 백현진 - 모과(Unreleased)', artists:'온스테이지ONSTAGE', meta:'5:02', vt:'UGC'}, status:'substitute',
+   cands:[C('Mogwa','Bek Hyunjin','Mogwa · 4:31',0.74,[['별칭 일치 (로마자)','ok'],['변형 감지: 라이브 무대','warn'],['길이 31초 차','bad']])]},
+  {kind:'track', src:{title:"LNGSHOT – Moonwalkin' (ANIME REMIX)", artists:'올라가냥 OLGN', meta:'2:58', vt:'UGC', group:'ANIME REMIX'}, status:'substitute',
+   cands:[C("Moonwalkin'",'LNGSHOT',"Moonwalkin' · 2:41",0.93,[['변형 감지: remix','warn']])]},
+  {kind:'track', src:{title:'NOWIMYOUNG - AH AH feat. Sik-K (ANIME REMIX)', artists:'올라가냥 OLGN', meta:'3:05', vt:'UGC', group:'ANIME REMIX'}, status:'substitute',
+   cands:[C('AH AH (feat. Sik-K)','NOWIMYOUNG','AH AH · 2:52',0.92,[['변형 감지: remix','warn']])]},
+  {kind:'track', src:{title:'희대의 (HEEDAE) - 잡아가세요 (ANIME REMIX)', artists:'올라가냥 OLGN', meta:'2:44', vt:'UGC', group:'ANIME REMIX'}, status:'not_found',
+   cands:[]},
+  {kind:'track', src:{title:'한국힙합 대표곡 TOP300 (1989~2026)', artists:'MemoryMas', meta:'3:12:40', vt:'UGC'}, status:'not_found',
+   cands:[]},
+];
+const INIT = {auto:'accept', exists:'skip', not_found:'preserve', review:'pending', substitute:'pending'};
+DATA.forEach((d,i)=>{ d.id=i; d.chosen=0; d.decision = (d.status==='auto' && d.src.vt==='UGC') ? 'pending' : INIT[d.status]; });
+
+let tab='album', filter='all', sel=0, th=0.90;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const score = d => d.cands[d.chosen]?.score ?? 0;
+
+function visible(){
+  return DATA.filter(d=>d.kind===tab && (filter==='all'||d.status===filter))
+             .sort((a,b)=>score(b)-score(a));
+}
+
+function render(){
+  $('tabs').innerHTML = TABS.map(t=>`<button class="tab ${t.k===tab?'on':''}" data-tab="${t.k}">${t.label}<small>${t.total.toLocaleString()}</small></button>`).join('');
+  const inTab = DATA.filter(d=>d.kind===tab);
+  $('filters').innerHTML = Object.entries(STATUS).map(([k,v])=>{
+    const n = k==='all'?inTab.length:inTab.filter(d=>d.status===k).length;
+    return `<button class="chip ${k===filter?'on':''}" data-filter="${k}">${v.label}<span class="n">${n}</span></button>`;}).join('');
+
+  const groups = {};
+  inTab.filter(d=>d.src.group && d.decision==='pending' || d.src.group && d.status==='not_found').forEach(d=>(groups[d.src.group]??=[]).push(d));
+  const g = Object.entries(groups).find(([,v])=>v.length>=2);
+  $('group').innerHTML = g ? `<div class="group">💡 <b>"${esc(g[0])}"</b> 비슷한 항목 ${g[1].length}개 (샘플 기준 · 실제 데이터에선 12개)
+     <button class="btn" data-group="${esc(g[0])}" data-act="preserve">모두 보존</button>
+     <button class="btn" data-group="${esc(g[0])}" data-act="accept">모두 원곡으로 대체</button></div>` : '';
+
+  const rows = visible();
+  if (sel >= rows.length) sel = Math.max(0, rows.length-1);
+  $('list').innerHTML = rows.length ? rows.map((d,i)=>row(d,i)).join('') : `<div class="empty">이 조건에 해당하는 항목이 없어요</div>`;
+
+  const bulkN = DATA.filter(d=>d.kind===tab && d.decision==='pending' && d.cands.length && score(d)>=th).length;
+  $('bulkBtn').textContent = `승인 (${bulkN}개)`; $('bulkBtn').disabled = !bulkN;
+  $('bulkNote').textContent = '미정 항목만 대상 · UGC 포함';
+
+  const cnt = k => DATA.filter(d=>d.decision===k).length;
+  $('tot').innerHTML = `<span>승인 <b>${cnt('accept')}</b></span><span>보존 <b>${cnt('preserve')}</b></span><span>건너뛰기 <b>${cnt('skip')}</b></span><span style="color:var(--warn)">미정 <b>${cnt('pending')}</b></span>`;
+  $('apply').textContent = `Spotify에 적용 (${cnt('accept')})`;
+}
+
+function row(d,i){
+  const c = d.cands[d.chosen];
+  const unit = {album:'앨범',artist:'아티스트',track:'곡'}[d.kind];
+  const vt = d.src.vt ? `<span class="badge ${d.src.vt==='UGC'?'b-ugc':'b-atv'}">${d.src.vt}</span>` : '';
+  const src = `<div class="item"><div class="art ytm">YT</div><div class="txt">
+      <div class="t">${vt}${esc(d.src.title)}</div><div class="s">${esc([d.src.artists,d.src.meta].filter(Boolean).join(' · '))}</div></div></div>`;
+  const dst = c ? `<div class="item to"><div class="art sp">SP</div><div class="txt">
+      <div class="t">${esc(c.title)}</div><div class="s">${esc([c.artists,c.meta].filter(Boolean).join(' · '))}</div>
+      <div class="why">${c.why.map(([t,k])=>`<span class="${k}">${esc(t)}</span>`).join('')}</div>
+      ${d.cands.length>1?`<button class="alts" data-open="${d.id}">다른 후보 ${d.cands.length-1}개 ▾</button>`:`<button class="alts" data-open="${d.id}">직접 검색 ▾</button>`}
+    </div></div>`
+    : `<div class="item to"><div class="art none">?</div><div class="txt"><div class="t" style="color:var(--muted)">Spotify에서 찾지 못했어요</div>
+      <div class="s">보존하면 YT Music "이전 안 됨" 플레이리스트에 모아둬요</div>
+      <button class="alts" data-open="${d.id}">직접 검색 ▾</button></div></div>`;
+  const sc = `<div class="score st-${d.status}"><div class="v">${c? c.score.toFixed(2):'–'}</div><span class="l">${ST_LABEL[d.status]}</span></div>`;
+  const b = (k,l,key)=>`<button class="${d.decision===k?'on '+k:''}" data-dec="${k}" data-id="${d.id}">${l}<kbd>${key}</kbd></button>`;
+  const dec = `<div class="dec">${c?b('accept','승인','Y'):''}${b('skip','건너뛰기','N')}${b('preserve','보존','P')}</div>`;
+  const cands = `<div class="cands">${d.cands.map((x,j)=>`<div class="cand ${j===d.chosen?'chosen':''}" data-pick="${d.id}:${j}">
+      <div class="art sp">SP</div><div class="txt"><div class="t">${esc(x.title)}</div><div class="s">${esc([x.artists,x.meta].filter(Boolean).join(' · '))}</div></div>
+      <div class="sc">${x.score.toFixed(2)}</div></div>`).join('')}
+      <div class="search"><input placeholder="${unit} 직접 검색 (예: ${esc(d.src.title.slice(0,18))})"><button class="btn">검색</button></div></div>`;
+  return `<div class="row ${i===sel?'sel':''} ${d.decision==='skip'?'dim':''}" data-row="${i}">${src}${sc}${dst}${dec}${cands}</div>`;
+}
+
+function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toast.h); toast.h=setTimeout(()=>el.classList.remove('show'),1400); }
+function decide(d,k){ if(k==='accept'&&!d.cands.length) return; d.decision=k; }
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-tab],[data-filter],[data-dec],[data-open],[data-pick],[data-group],[data-row]');
+  if(!t) return;
+  if(t.dataset.tab){ tab=t.dataset.tab; filter='all'; sel=0; }
+  else if(t.dataset.filter){ filter=t.dataset.filter; sel=0; }
+  else if(t.dataset.dec){ decide(DATA[t.dataset.id], t.dataset.dec); }
+  else if(t.dataset.open){ e.stopPropagation(); t.closest('.row').classList.toggle('open'); return; }
+  else if(t.dataset.pick){ const [id,j]=t.dataset.pick.split(':').map(Number); DATA[id].chosen=j; DATA[id].decision='accept'; toast('후보를 바꾸고 승인했어요'); }
+  else if(t.dataset.group){ const k=t.dataset.act; DATA.filter(d=>d.src.group===t.dataset.group).forEach(d=>decide(d, k==='accept'&&!d.cands.length?'preserve':k)); toast(k==='preserve'?'묶음을 보존으로 처리했어요':'원곡이 있는 항목은 대체, 없는 항목은 보존했어요'); }
+  else if(t.dataset.row){ if(e.target.closest('input,.cands')) return; sel=+t.dataset.row; }
+  render();
+});
+$('th').addEventListener('input',e=>{ th=+e.target.value; $('thv').textContent=th.toFixed(2); render(); });
+$('bulkBtn').addEventListener('click',()=>{ const xs=DATA.filter(d=>d.kind===tab&&d.decision==='pending'&&d.cands.length&&score(d)>=th); xs.forEach(d=>d.decision='accept'); toast(`${xs.length}개를 승인했어요`); render(); });
+$('apply').addEventListener('click',()=>toast('시안: 다음 화면(적용 진행)으로 넘어가요'));
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT') return;
+  const rows=visible(); const d=rows[sel]; let moved=false;
+  if(e.key==='ArrowDown'||e.key==='j'){ sel=Math.min(rows.length-1,sel+1); moved=true; }
+  else if(e.key==='ArrowUp'||e.key==='k'){ sel=Math.max(0,sel-1); moved=true; }
+  else if(!d) return;
+  else if(e.key==='y'||e.key==='Y'){ decide(d,'accept'); sel=Math.min(rows.length-1,sel+1); }
+  else if(e.key==='n'||e.key==='N'){ decide(d,'skip'); sel=Math.min(rows.length-1,sel+1); }
+  else if(e.key==='p'||e.key==='P'){ decide(d,'preserve'); sel=Math.min(rows.length-1,sel+1); }
+  else if(e.key==='Enter'){ document.querySelector(`[data-row="${sel}"]`)?.classList.toggle('open'); return; }
+  else return;
+  e.preventDefault(); render();
+  if(moved) document.querySelector('.row.sel')?.scrollIntoView({block:'nearest'});
+});
+render();
+</script>
+</body>
+</html>
