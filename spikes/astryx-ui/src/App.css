@@ -286,3 +286,6 @@
   .side-panel .panel-keys { display: none; }
   .progress-headline { font-size: 16px; }
 }
+
+.side-panel { will-change: transform; transition: box-shadow .3s ease; }
+.side-panel.is-scrolled { box-shadow: 0 10px 30px var(--color-shadow), 0 2px 6px var(--color-shadow); }

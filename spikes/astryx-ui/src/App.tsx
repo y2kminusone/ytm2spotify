@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import {Theme} from '@astryxdesign/core/theme';
 import {neutralTheme} from '@astryxdesign/theme-neutral/built';
 import {Button} from '@astryxdesign/core/Button';
@@ -91,6 +91,7 @@ export default function App() {
   useEffect(() => { document.querySelector('.pair.is-selected')?.scrollIntoView({block: 'nearest'}); }, [sel]);
 
   const total = (sample.totals as Record<Kind, number>)[kind];
+  const panelRef = useFloatyPanel();
 
   return (
     <Theme theme={neutralTheme} mode="light">
@@ -155,7 +156,7 @@ export default function App() {
           </ol>
         </main>
 
-        <aside className="side-panel" aria-label="진행 상황과 저장">
+        <aside ref={panelRef} className="side-panel" aria-label="진행 상황과 저장">
           <section className="panel-block progress" aria-live="polite">
             <Text type="supporting" display="block">진행 상황</Text>
             <p className="progress-headline">
@@ -311,4 +312,34 @@ function PairRow({d, selected, willAccept, cutLabel, isOpen, onSelect, onToggle,
       )}
     </li>
   );
+}
+
+// The side panel stays sticky but trails the scroll a little and settles back with a soft spring,
+// so it feels attached to the page rather than bolted to the screen. Off for reduced motion.
+function useFloatyPanel() {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let lastY = window.scrollY, pos = 0, vel = 0, frame = 0;
+    const MAX = 18;
+    const tick = () => {
+      vel = (vel - pos * 0.14) * 0.74;          // spring back toward 0, damped
+      pos = Math.max(-MAX, Math.min(MAX, pos + vel));
+      el.style.transform = `translate3d(0, ${pos.toFixed(2)}px, 0)`;
+      if (Math.abs(pos) > 0.05 || Math.abs(vel) > 0.05) frame = requestAnimationFrame(tick);
+      else { el.style.transform = ''; frame = 0; }
+    };
+    const onScroll = () => {
+      if (window.innerWidth <= 1080) return;  // collapsed bottom bar on narrow screens stays still
+      const y = window.scrollY;
+      vel += Math.max(-6, Math.min(6, -(y - lastY) * 0.12));  // lag behind the scroll direction
+      lastY = y;
+      el.classList.toggle('is-scrolled', y > 40);
+      if (!frame) frame = requestAnimationFrame(tick);
+    };
+    window.addEventListener('scroll', onScroll, {passive: true});
+    return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(frame); };
+  }, []);
+  return ref;
 }
