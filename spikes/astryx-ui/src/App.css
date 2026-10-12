@@ -118,7 +118,7 @@
 .status-not_found  { --tone-bg: var(--color-error-muted);   --tone-fg: var(--color-text-primary); }
 
 .decide {
-  grid-area: act; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  grid-area: act; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   padding-top: 12px; border-top: 1px solid var(--color-border);
 }
 .choices { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -180,3 +180,31 @@
   padding: 14px 16px; margin-bottom: 4px; border-radius: var(--radius-container);
   background: var(--color-warning-muted); border: 1px solid var(--color-border);
 }
+
+/* ---------- sticky summary (moved up from the bottom dock) ---------- */
+.summary {
+  position: sticky; top: 57px; z-index: 4;
+  background: color-mix(in srgb, var(--color-background-body) 92%, transparent); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border);
+}
+.summary-in { max-width: 1040px; margin: 0 auto; padding: 10px 32px; display: grid; gap: 8px; }
+.summary .tally { display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; color: var(--color-text-secondary); }
+.summary .tally b { font-size: 18px; color: var(--color-text-primary); font-variant-numeric: tabular-nums; margin-right: 3px; }
+.summary .tally em { font-style: normal; font-weight: 600; color: var(--color-text-green); margin-left: 4px; }
+.summary .t-todo b { color: var(--color-warning); }
+.meter { display: flex; height: 6px; border-radius: 999px; overflow: hidden; background: var(--color-background-muted); gap: 2px; }
+.meter span { transition: flex-grow .2s; }
+.m-accept { background: var(--color-success); }
+.m-preview { background: repeating-linear-gradient(45deg, var(--color-success) 0 4px, var(--color-success-muted) 4px 8px); }
+.m-preserve { background: var(--color-warning); }
+.m-skip { background: var(--color-text-secondary); }
+.m-pending { background: var(--color-border-emphasized); }
+
+/* slider preview inside the list */
+.will-accept { font-size: 12px; font-weight: 600; color: var(--color-text-green); }
+.pair.is-preview:not(.is-selected) { border-color: var(--color-success); }
+
+/* find button joins the decision group */
+.sep { width: 1px; align-self: stretch; margin: 2px 4px; background: var(--color-border); }
+.decide .d-find button { box-shadow: inset 0 0 0 1px var(--color-border-emphasized); background: var(--color-background-card); }
+@media (prefers-reduced-motion: reduce) { .meter span { transition: none; } }

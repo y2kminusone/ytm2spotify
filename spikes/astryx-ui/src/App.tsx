@@ -50,7 +50,8 @@ export default function App() {
   const [items, setItems] = useState(initialItems);
   const [kind, setKind] = useState<Kind>((q.get('tab') as Kind) || 'track');
   const [filter, setFilter] = useState<Filter>((q.get('filter') as Filter) || 'todo');
-  const [cut, setCut] = useState(0.9);
+  const [cut, setCut] = useState(Number(q.get('cut')) || 0.9);
+  const [previewing, setPreviewing] = useState(q.has('cut'));
   const [sel, setSel] = useState(0);
   const [open, setOpen] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -104,6 +105,23 @@ export default function App() {
           </div>
         </header>
 
+        <div className="summary" aria-live="polite">
+          <div className="summary-in">
+            <div className="tally">
+              <span className="t-accept"><b>{count('accept')}</b> 저장{previewing && bulk.length > 0 && <em> +{bulk.length} 예정</em>}</span>
+              <span className="t-preserve"><b>{count('preserve')}</b> 보관</span>
+              <span className="t-skip"><b>{count('skip')}</b> 건너뜀</span>
+              <span className="t-todo"><b>{count('pending') - (previewing ? bulk.length : 0)}</b> 확인 전</span>
+            </div>
+            <div className="meter" aria-hidden>
+              {(['accept', 'preview', 'preserve', 'skip', 'pending'] as const).map(k => {
+                const n = k === 'preview' ? (previewing ? bulk.length : 0) : k === 'pending' ? count('pending') - (previewing ? bulk.length : 0) : count(k);
+                return n > 0 ? <span key={k} className={`m-${k}`} style={{flexGrow: n}} /> : null;
+              })}
+            </div>
+          </div>
+        </div>
+
         <main className="main">
           <section className="intro">
             <Heading level={1}>
@@ -115,7 +133,7 @@ export default function App() {
             <Text type="supporting" as="p">시안이에요. 실제 보관함의 일부만 샘플로 넣었어요.</Text>
           </section>
 
-          <TabList value={kind} onChange={v => { setKind(v as Kind); setSel(0); setOpen(null); }} hasDivider size="lg">
+          <TabList value={kind} onChange={v => { setKind(v as Kind); setSel(0); setOpen(null); setPreviewing(false); }} hasDivider size="lg">
             {(Object.keys(KIND_LABEL) as Kind[]).map(k => (
               <Tab key={k} value={k} label={KIND_LABEL[k]}
                 endContent={<span className="tab-count">{(sample.totals as Record<Kind, number>)[k].toLocaleString()}</span>} />
@@ -130,10 +148,10 @@ export default function App() {
             </SegmentedControl>
             <div className="bulk">
               <Slider label="자동 승인 기준 점수" isLabelHidden value={cut} min={0.7} max={1} step={0.01}
-                onChange={(v: number) => setCut(v)} formatValue={(v: number) => `${Math.round(v * 100)}점`} valueDisplay="text" width={200} />
+                onChange={(v: number) => { setCut(v); setPreviewing(true); }} formatValue={(v: number) => `${Math.round(v * 100)}점`} valueDisplay="text" width={200} />
               <Button label={bulk.length ? `${Math.round(cut * 100)}점 이상 ${bulk.length}개 승인` : '승인할 항목 없음'}
                 isDisabled={!bulk.length}
-                onClick={() => { setItems(xs => xs.map(d => (bulk.includes(d) ? {...d, decision: 'accept'} : d))); say(`${bulk.length}개를 승인했어요`); }} />
+                onClick={() => { setItems(xs => xs.map(d => (bulk.includes(d) ? {...d, decision: 'accept'} : d))); setPreviewing(false); say(`${bulk.length}개를 승인했어요`); }} />
             </div>
           </div>
 
@@ -153,7 +171,7 @@ export default function App() {
           <ol className="pairs">
             {rows.length === 0 && <li className="empty"><Text color="secondary">이 조건에 맞는 항목이 없어요</Text></li>}
             {rows.map((d, i) => (
-              <PairRow key={d.id} d={d} selected={i === sel} isOpen={open === d.id}
+              <PairRow key={d.id} d={d} selected={i === sel} willAccept={previewing && bulk.includes(d)} cutLabel={`${Math.round(cut * 100)}점`} isOpen={open === d.id}
                 onSelect={() => setSel(i)} onToggle={() => setOpen(o => (o === d.id ? null : d.id))}
                 onDecide={k => decide(d.id, k)}
                 onPick={j => { setItems(xs => xs.map(x => (x.id === d.id ? {...x, chosen: j, decision: 'accept'} : x))); say('후보를 바꾸고 승인했어요'); }} />
@@ -163,12 +181,6 @@ export default function App() {
 
         <footer className="dock">
           <div className="dock-in">
-            <div className="tally">
-              <span><b>{count('accept')}</b> 저장</span>
-              <span><b>{count('preserve')}</b> 보관</span>
-              <span><b>{count('skip')}</b> 건너뜀</span>
-              <span className={count('pending') ? 'is-todo' : ''}><b>{count('pending')}</b> 확인 전</span>
-            </div>
             <div className="keys" aria-hidden>
               <Kbd keys="up" /><Kbd keys="down" /> 이동 <Kbd keys="Y" /> 승인 <Kbd keys="N" /> 건너뛰기 <Kbd keys="P" /> 보관
             </div>
@@ -195,18 +207,19 @@ function Meta({text}: {text: string}) {
   return <span className="meta">{parts.map(p => <span key={p}>{p}</span>)}</span>;
 }
 
-function PairRow({d, selected, isOpen, onSelect, onToggle, onDecide, onPick}: {
-  d: Item; selected: boolean; isOpen: boolean; onSelect: () => void; onToggle: () => void;
+function PairRow({d, selected, willAccept, cutLabel, isOpen, onSelect, onToggle, onDecide, onPick}: {
+  d: Item; selected: boolean; willAccept: boolean; cutLabel: string; isOpen: boolean; onSelect: () => void; onToggle: () => void;
   onDecide: (k: Decision) => void; onPick: (j: number) => void;
 }) {
   const c = d.cands[d.chosen];
   const round = d.kind === 'artist';
   const score = c ? Math.round(c.score * 100) : null;
   return (
-    <li className={`pair status-${d.status} decision-${d.decision} ${selected ? 'is-selected' : ''}`} onClick={onSelect}>
+    <li className={`pair status-${d.status} decision-${d.decision} ${selected ? 'is-selected' : ''} ${willAccept ? 'is-preview' : ''}`} onClick={onSelect}>
       <div className="head">
         <span className="verdict">{STATUS_LABEL[d.status]}</span>
         {score !== null && <span className="match">일치도 {score}%</span>}
+        {willAccept && <span className="will-accept">{cutLabel} 이상이라 일괄 승인 대상이에요</span>}
         {d.decision !== 'pending' && <span className="chosen-note">{DECISION_NOTE[d.decision]}</span>}
       </div>
       <div className="side from">
@@ -230,6 +243,7 @@ function PairRow({d, selected, isOpen, onSelect, onToggle, onDecide, onPick}: {
             <div className="names">
               <Text weight="semibold" display="block">{c.title}</Text>
               <Text type="supporting" maxLines={1}>{c.artists || 'Spotify 아티스트'}</Text>
+              {c.meta && <span className="meta-row"><Meta text={c.meta} /></span>}
               <div className="why">
                 {c.why.filter(([t, k]) => k !== 'ok' && !t.startsWith('사용자 업로드')).map(([t, k]) => <Token key={t} size="sm" label={t} color={WHY_COLOR[k]} />)}
                 <span className="why-ok">{c.why.filter(([, k]) => k === 'ok').map(([t]) => t).join(', ')}</span>
@@ -252,8 +266,9 @@ function PairRow({d, selected, isOpen, onSelect, onToggle, onDecide, onPick}: {
         {c && <span className="d d-accept"><ToggleButton size="sm" label="승인" isPressed={d.decision === 'accept'} onPressedChange={() => onDecide('accept')} /></span>}
         <span className="d d-skip"><ToggleButton size="sm" label="건너뛰기" isPressed={d.decision === 'skip'} onPressedChange={() => onDecide('skip')} /></span>
         <span className="d d-preserve"><ToggleButton size="sm" label="보관" isPressed={d.decision === 'preserve'} onPressedChange={() => onDecide('preserve')} /></span>
+          <span className="sep" aria-hidden />
+          <span className="d d-find"><Button size="sm" variant="ghost" icon={<Icon icon="search" />} label={d.cands.length > 1 ? `다른 후보 ${d.cands.length - 1}개` : '다른 곡 찾기'} onClick={onToggle} /></span>
         </div>
-        <Button size="sm" variant="ghost" icon={<Icon icon="search" />} label={d.cands.length > 1 ? `다른 후보 ${d.cands.length - 1}개` : '다른 곡 찾기'} onClick={onToggle} />
       </div>
 
       {isOpen && (

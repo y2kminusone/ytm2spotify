@@ -32,6 +32,7 @@ def sp(kind, q, pick=0):
         "year": (it.get("release_date") or it.get("album", {}).get("release_date") or "")[:4],
         "tracks": it.get("total_tracks"),
         "dur": round(it["duration_ms"] / 1000) if it.get("duration_ms") else None,
+        "album": it.get("album", {}).get("name"),
     }
 
 def mmss(s):
@@ -110,8 +111,29 @@ for needle in ["잡아가세요 (ANIME REMIX)", "한국힙합 대표곡 TOP300"]
 
 for s in S:
     for c in s["cands"]:
-        if not c.get("meta"):
+        if s["kind"] == "track":
+            c["meta"] = " · ".join(filter(None, [c.get("album"), mmss(c.get("dur"))]))
+        elif not c.get("meta"):
             c["meta"] = " · ".join(filter(None, [c.get("year"), mmss(c.get("dur"))]))
+# length reasons are computed from real durations, never hand-written
+def secs(meta):
+    for part in reversed(meta.split(" · ")):
+        bits = part.split(":")
+        if len(bits) in (2, 3) and all(b.isdigit() for b in bits):
+            n = 0
+            for b in bits:
+                n = n * 60 + int(b)
+            return n
+    return None
+for s in S:
+    if s["kind"] != "track":
+        continue
+    a = secs(s["src"]["meta"])
+    for c in s["cands"]:
+        c["why"] = [w for w in c["why"] if not w[0].startswith("길이")]
+        if a is not None and c.get("dur"):
+            diff = abs(a - c["dur"])
+            c["why"].append([f"길이 {diff}초 차", "ok" if diff <= 3 else "warn" if diff <= 10 else "bad"])
 dst = Path(__file__).resolve().parents[1] / "src" / "sample.json"
 dst.write_text(json.dumps({"totals": {"album": len(albums), "artist": len(artists), "track": len({t['videoId'] for t in liked})}, "items": S}, ensure_ascii=False, indent=1))
 print("wrote", dst, len(S), "items")
