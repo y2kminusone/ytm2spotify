@@ -4,6 +4,11 @@
   --ytm: #ff3040;
   --sp: #1ed760;
   --hangul: 'Pretendard Variable', Pretendard;
+  /* app tones. The neutral theme's --color-warning is a dark olive meant for text/icons,
+     not a fill, so "보관" and "주의" get their own amber here. */
+  --keep: light-dark(#e3a21a, #f2be4a);        /* fills: 보관 막대, 주의 아이콘 */
+  --keep-soft: var(--color-warning-muted);     /* 눌린 보관 버튼 배경 */
+  --keep-ink: light-dark(#a35f00, #f8d36a);    /* 강조 숫자/글자 */
   --font-family-body: var(--hangul), system-ui, sans-serif;
   --font-family-heading: var(--hangul), system-ui, sans-serif;
   min-height: 100vh;
@@ -124,7 +129,7 @@
 .decide .d button { box-shadow: inset 0 0 0 1px var(--color-border-emphasized); background: var(--color-background-card); }
 .decide .d button[aria-pressed="true"] { box-shadow: none; }
 .decide .d-accept button[aria-pressed="true"] { background: var(--color-success); color: var(--color-on-success); }
-.decide .d-preserve button[aria-pressed="true"] { background: var(--color-warning); color: var(--color-on-warning); }
+.decide .d-preserve button[aria-pressed="true"] { background: var(--keep-soft); color: var(--color-text-primary); box-shadow: inset 0 0 0 1.5px var(--keep); }
 .decide .d-skip button[aria-pressed="true"] { background: var(--color-text-primary); color: var(--color-background-body); }
 
 .alts { grid-area: alts; display: grid; gap: 6px; padding-top: 12px; border-top: 1px dashed var(--color-border); }
@@ -187,7 +192,7 @@
   font-size: 10px; font-weight: 800; color: #fff;
 }
 .r-ok .r-icon { background: var(--color-success); }
-.r-warn .r-icon { background: var(--color-warning); }
+.r-warn .r-icon { background: var(--keep); color: #1a1200; }
 .r-bad .r-icon { background: var(--color-error); }
 .r-ok { color: var(--color-text-secondary); }
 .is-selected .reason { background: var(--color-background-card); }
@@ -212,7 +217,7 @@
 .meter span { transition: flex-grow .2s; }
 .m-accept { background: var(--color-success); }
 .m-preview { background: repeating-linear-gradient(45deg, var(--color-success) 0 4px, var(--color-success-muted) 4px 8px); }
-.m-preserve { background: var(--color-warning); }
+.m-preserve { background: var(--keep); }
 .m-skip { background: var(--color-text-secondary); }
 .m-pending { background: var(--color-border-emphasized); }
 .tally { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin: 0; }
@@ -221,7 +226,7 @@
 .tally dt i { width: 8px; height: 8px; border-radius: 2px; }
 .tally dd { margin: 0; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .tally em { font-style: normal; font-size: 14px; font-weight: 600; color: var(--color-text-green); margin-left: 6px; }
-.t-todo dd { color: var(--color-warning); }
+.t-todo dd { color: var(--keep-ink); }
 .keys ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 13px; color: var(--color-text-secondary); }
 .keys li { display: flex; align-items: center; gap: 8px; }
 .keys li > span { display: inline-flex; gap: 2px; }
@@ -272,7 +277,7 @@
 /* side panel hierarchy: progress (+ save) first and loudest, shortcuts last and quiet */
 .progress { gap: 12px; padding-top: 20px; }
 .progress-headline { margin: 0; font-size: 20px; line-height: 1.35; font-weight: 600; letter-spacing: -0.02em; }
-.progress-headline b { color: var(--color-warning); }
+.progress-headline b { color: var(--keep-ink); }
 .progress .meter { height: 10px; }
 .panel-keys { padding: 12px 18px 14px; font-size: 13px; color: var(--color-text-secondary); }
 .panel-keys summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; }
