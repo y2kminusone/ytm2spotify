@@ -63,6 +63,8 @@ def create_app() -> FastAPI:
             "last_sync": store.get_meta("last_sync"),
             "cut": store.get_meta("cut", 0.9),
             "preserve_playlist": store.get_meta("preserve_playlist"),
+            "unmatched": store.never_matched(),
+            "quota_reset_at": store.get_meta("search_quota_reset_at"),
         }
 
     @app.post("/api/decision")
