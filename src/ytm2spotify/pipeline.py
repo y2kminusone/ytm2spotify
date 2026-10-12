@@ -6,9 +6,9 @@ import csv
 import io
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
 
-from .adapters.spotify import SpotifyAdapter, to_item
+from .adapters.spotify import QuotaExceeded, SpotifyAdapter, to_item
 from .adapters.ytmusic import YTMusicAdapter
 from .matcher import MATCHER_VERSION, initial_decision, match
 from .models import Item
@@ -66,6 +66,7 @@ def match_all(store: Store, sp: SpotifyAdapter, workers: int = 4) -> dict:
 
     counts: dict[str, int] = {}
     errors: list[str] = []
+    quota: QuotaExceeded | None = None
     started = time.time()
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(one, k): k for k in keys}
@@ -73,12 +74,22 @@ def match_all(store: Store, sp: SpotifyAdapter, workers: int = 4) -> dict:
             try:
                 st = f.result()
                 counts[st] = counts.get(st, 0) + 1
+            except CancelledError:
+                continue
+            except QuotaExceeded as e:
+                quota = e
+                for other in futures:
+                    other.cancel()  # remaining items stay unmatched; the next run resumes them
             except Exception as e:  # keep going; failed items stay unmatched and are retried next run
                 errors.append(f"{futures[f]}: {e}")
             if i % 5 == 0 or i == len(keys):
                 _progress("matching", i, len(keys), started)
     print()
-    return {"matched": len(keys), "by_status": counts, "errors": errors[:10], "error_count": len(errors), "calls": calls}
+    if quota:
+        store.set_meta("search_quota_reset_at", quota.reset_at)
+    left = len(store.unmatched_keys(MATCHER_VERSION))
+    return {"matched": sum(counts.values()), "left": left, "by_status": counts, "quota_stop": str(quota) if quota else None,
+            "errors": errors[:10], "error_count": len(errors), "calls": calls}
 
 
 def apply(store: Store, sp: SpotifyAdapter, kinds: list[str] | None = None, limit: int | None = None) -> dict:

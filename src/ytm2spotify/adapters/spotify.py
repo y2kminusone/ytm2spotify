@@ -32,6 +32,15 @@ class SpotifyError(RuntimeError):
     pass
 
 
+class QuotaExceeded(SpotifyError):
+    """Dev-mode apps get a daily search quota (found 2026-10-13: ~540 searches, then
+    429 QUOTA_EXCEEDED with Retry-After ≈ 22h). Other endpoints keep working."""
+
+    def __init__(self, retry_after: int):
+        self.reset_at = time.time() + retry_after
+        super().__init__(f"Spotify search quota used up; resets in about {retry_after // 3600}h {retry_after % 3600 // 60}m")
+
+
 def _img(images) -> str | None:
     return images[0]["url"] if images else None
 
@@ -113,7 +122,10 @@ class SpotifyAdapter:
         for attempt in range(6):
             r = self.session.request(method, API + path, headers={"Authorization": f"Bearer {self._token()}"}, timeout=30, **kw)
             if r.status_code == 429:
-                time.sleep(min(int(r.headers.get("Retry-After", "2")) + 1, 60))
+                wait = int(r.headers.get("Retry-After", "2"))
+                if wait > 120 or "QUOTA_EXCEEDED" in r.text:
+                    raise QuotaExceeded(wait)  # don't sleep for a day; stop and tell the user
+                time.sleep(wait + 1)
                 continue
             if r.status_code >= 500 and attempt < 3:
                 time.sleep(1 + attempt)
