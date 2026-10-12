@@ -94,6 +94,9 @@ const ko = {
   preserveDone: (n: number) => `YT Music에 ${n}곡짜리 보관 목록을 만들었어요`,
   preserveOpen: '보관 목록 열기',
   csv: 'CSV로 내려받기',
+  dupLibrary: '원곡이 이미 내 Spotify에 있어요 (다시 저장하지 않아요)',
+  dupOther: '같은 곡이 다른 항목으로도 저장 예정이에요 (한 번만 저장돼요)',
+  alreadyCount: (n: number) => `${n}개는 이미 있어서 건너뜀`,
   searching: '검색하는 중…',
   noResults: '검색 결과가 없어요',
 
@@ -187,6 +190,9 @@ const en: Messages = {
   preserveDone: n => `Created a YT Music playlist with ${n} ${plural(n, 'song', 'songs')}`,
   preserveOpen: 'Open playlist',
   csv: 'Download CSV',
+  dupLibrary: "Already in your Spotify (won't be saved again)",
+  dupOther: 'Another item saves the same track (saved once)',
+  alreadyCount: n => `${n} already there`,
   searching: 'Searching…',
   noResults: 'No results',
 

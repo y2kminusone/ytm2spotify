@@ -99,17 +99,25 @@ def apply(store: Store, sp: SpotifyAdapter, kinds: list[str] | None = None, limi
             and (not kinds or r["kind"] in kinds)]
     if limit:
         todo = todo[:limit]
-    by_uri = {}
+    # one save per Spotify URI (an original and its remix may both point at the same track),
+    # and never re-save what's already in the library — that would bump its "added" date
+    in_library = {i.uri for i in store.items("spotify")}
+    by_uri: dict[str, list[str]] = {}
     for r in todo:
         c = r["cands"][min(r["chosen"], len(r["cands"]) - 1)]
         by_uri.setdefault(c["item"]["uri"], []).append(r["key"])
+    already = 0
+    for uri in [u for u in by_uri if u in in_library]:
+        for key in by_uri.pop(uri):
+            store.mark_applied(key, True, uri)
+            already += 1
     ok = failed = 0
     for batch, err in sp.save(list(by_uri)):
         for uri in batch:
             for key in by_uri[uri]:
                 store.mark_applied(key, err is None, uri, err)
                 ok, failed = (ok + 1, failed) if err is None else (ok, failed + 1)
-    return {"saved": ok, "failed": failed}
+    return {"saved": ok, "failed": failed, "already": already}
 
 
 def preserved_tracks(store: Store) -> list[dict]:

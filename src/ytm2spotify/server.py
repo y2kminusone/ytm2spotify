@@ -58,6 +58,7 @@ def create_app() -> FastAPI:
         recs = store.records()
         return {
             "records": recs,
+            "library_uris": [i.uri for i in store.items("spotify") if i.uri],
             "unavailable_tracks": store.get_meta("ytm_unavailable_tracks", 0),
             "last_sync": store.get_meta("last_sync"),
             "cut": store.get_meta("cut", 0.9),

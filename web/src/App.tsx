@@ -33,7 +33,7 @@ interface Rec {
   key: string; kind: Kind; src: Src; status: Status; cands: Cand[]; variant: string | null; parsed_artist: string | null;
   decision: Decision; chosen: number; apply_status: 'none' | 'done' | 'failed'; apply_error: string | null;
 }
-interface State {records: Rec[]; unavailable_tracks: number; cut: number; preserve_playlist: string | null}
+interface State {records: Rec[]; library_uris: string[]; unavailable_tracks: number; cut: number; preserve_playlist: string | null}
 
 const KINDS: Kind[] = ['album', 'artist', 'track'];
 // Filters follow the user's decision, not the matcher's verdict: "to check" means "I haven't decided yet".
@@ -63,6 +63,7 @@ export default function App() {
 
   const [items, setItems] = useState<Rec[] | null>(null);
   const [meta, setMeta] = useState({unavailable: 0, playlist: null as string | null});
+  const [libraryUris, setLibraryUris] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [kind, setKind] = useState<Kind>(() => KINDS.includes(q.get('tab') as Kind) ? (q.get('tab') as Kind) : 'album');
   const [filter, setFilter] = useState<Filter>(() => (FILTERS as readonly string[]).includes(q.get('filter') ?? '') ? (q.get('filter') as Filter) : 'todo');
@@ -81,6 +82,7 @@ export default function App() {
       setItems(s.records);
       setCut(s.cut);
       setMeta({unavailable: s.unavailable_tracks, playlist: s.preserve_playlist});
+      setLibraryUris(new Set(s.library_uris));
       setLoadError(null);
     } catch (e) { setLoadError(String((e as Error).message)); }
   }, []);
@@ -115,6 +117,18 @@ export default function App() {
   const count = (k: Decision) => all.filter(d => d.decision === k).length;
   const toSave = all.filter(d => d.decision === 'accept' && d.apply_status !== 'done' && d.cands.length);
   const previewN = previewing ? bulk.length : 0;
+  // Spotify URI → keys that will save it; used to flag duplicates (a remix and its original)
+  const savers = new Map<string, string[]>();
+  for (const d of all) {
+    const u = d.decision === 'accept' ? chosenOf(d)?.item.uri : null;
+    if (u) savers.set(u, [...(savers.get(u) ?? []), d.key]);
+  }
+  const dupOf = (d: Rec): 'library' | 'other' | null => {
+    const u = chosenOf(d)?.item.uri;
+    if (!u || d.status === 'exists') return null;
+    if (libraryUris.has(u)) return 'library';
+    return (savers.get(u) ?? []).some(k => k !== d.key) ? 'other' : null;
+  };
   const totals = Object.fromEntries(KINDS.map(k => [k, all.filter(d => d.kind === k).length])) as Record<Kind, number>;
   // similar pending variants (e.g. 12 remixes) can be handled together
   const groups = Object.entries(
@@ -154,8 +168,8 @@ export default function App() {
   const save = async (trial: boolean) => {
     setBusy('save');
     try {
-      const r = await api<{saved: number; failed: number}>('/api/apply', trial ? {kinds: ['album'], limit: 5} : {});
-      say(r.saved + r.failed ? t.savedResult(r.saved, r.failed) : t.nothingToSave);
+      const r = await api<{saved: number; failed: number; already: number}>('/api/apply', trial ? {kinds: ['album'], limit: 5} : {});
+      say(r.saved + r.failed + r.already ? t.savedResult(r.saved, r.failed) + (r.already ? ` · ${t.alreadyCount(r.already)}` : '') : t.nothingToSave);
       setConfirming(false);
       await load();
     } catch (e) { fail(e); } finally { setBusy(null); }
@@ -240,7 +254,7 @@ export default function App() {
             <ol className="pairs">
               {rows.length === 0 && <li className="empty"><Text color="secondary">{t.empty}</Text></li>}
               {rows.map((d, i) => (
-                <PairRow key={d.key} d={d} t={t} selected={i === sel} isLeaving={leaving.has(d.key) && !matchesFilter(d, filter)} willAccept={previewing && bulk.includes(d)} cut={Math.round(cut * 100)}
+                <PairRow key={d.key} d={d} t={t} dup={dupOf(d)} selected={i === sel} isLeaving={leaving.has(d.key) && !matchesFilter(d, filter)} willAccept={previewing && bulk.includes(d)} cut={Math.round(cut * 100)}
                   isOpen={open === d.key}
                   onSelect={() => setSel(i)} onToggle={() => setOpen(o => (o === d.key ? null : d.key))}
                   onDecide={k => toggle(d, k)}
@@ -353,8 +367,8 @@ function metaOf(t: T, s: Src, side: 'from' | 'to') {
   return [];
 }
 
-function PairRow({d, t, selected, isLeaving, willAccept, cut, isOpen, onSelect, onToggle, onDecide, onPick, onSearch}: {
-  d: Rec; t: T; selected: boolean; isLeaving: boolean; willAccept: boolean; cut: number; isOpen: boolean;
+function PairRow({d, t, dup, selected, isLeaving, willAccept, cut, isOpen, onSelect, onToggle, onDecide, onPick, onSearch}: {
+  d: Rec; t: T; dup: 'library' | 'other' | null; selected: boolean; isLeaving: boolean; willAccept: boolean; cut: number; isOpen: boolean;
   onSelect: () => void; onToggle: () => void; onDecide: (k: Decision) => void; onPick: (j: number) => void;
   onSearch: (q: string) => Promise<number>;
 }) {
@@ -375,6 +389,7 @@ function PairRow({d, t, selected, isLeaving, willAccept, cut, isOpen, onSelect, 
       <div className="head">
         <span className="verdict">{t.status[d.status]}</span>
         {score !== null && <span className="match">{t.match(score)}</span>}
+        {dup && <span className="dup-note">{dup === 'library' ? t.dupLibrary : t.dupOther}</span>}
         {d.status === 'substitute' && d.variant && <span className="variant-note">{t.variantNote(variantText(t, `variant:${d.variant}`))}</span>}
         {willAccept && <span className="will-accept">{t.willAccept(cut)}</span>}
         {note && <span className={`chosen-note ${d.apply_status === 'failed' ? 'is-error' : ''}`}>{note}</span>}

@@ -352,3 +352,5 @@
   100% { opacity: 0; transform: translateX(24px); }
 }
 @media (prefers-reduced-motion: reduce) { .pair.is-leaving { animation: none; opacity: .4; } }
+
+.dup-note { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--color-background-blue); color: var(--color-text-primary); }
