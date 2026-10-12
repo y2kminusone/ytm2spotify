@@ -301,3 +301,13 @@
 .main { grid-area: main; padding-top: 0; }
 .side-panel { grid-area: aside; margin-top: 0; }
 @media (max-width: 1080px) { .shell { grid-template-areas: 'lead' 'main' 'aside'; } }
+
+/* decision buttons: our fill overrides hid Astryx's hover overlay, so restore clear hover/press feedback */
+.decide .d button { cursor: pointer; transition: background-color .12s, box-shadow .12s, transform .08s; }
+.decide .d button:hover { background: var(--color-background-muted); box-shadow: inset 0 0 0 1px var(--color-text-secondary); }
+.decide .d button:active { transform: translateY(1px); }
+.decide .d-accept button[aria-pressed="true"]:hover { background: color-mix(in srgb, var(--color-success) 85%, #000); box-shadow: none; }
+.decide .d-skip button[aria-pressed="true"]:hover { background: color-mix(in srgb, var(--color-text-primary) 85%, #fff); box-shadow: none; }
+.decide .d-preserve button[aria-pressed="true"]:hover { background: color-mix(in srgb, var(--keep-soft) 80%, var(--keep)); box-shadow: inset 0 0 0 1.5px var(--keep); }
+.decide .d button:focus-visible { outline: 2px solid var(--color-icon-blue); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .decide .d button { transition: none; } .decide .d button:active { transform: none; } }
