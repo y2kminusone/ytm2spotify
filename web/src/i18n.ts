@@ -74,6 +74,29 @@ const ko = {
   shortcuts: '키보드 단축키',
   keys: {move: '이동', accept: '승인', skip: '건너뛰기', keep: '보관', alts: '다른 후보 보기'},
 
+  loading: '불러오는 중…',
+  loadError: (e: string) => `서버에 연결하지 못했어요: ${e}`,
+  emptyLibrary: '아직 매칭된 항목이 없어요. 터미널에서 `ytm2spotify sync`와 `ytm2spotify match`를 먼저 실행해 주세요.',
+  unavailable: (n: number) => (n ? `YT Music에서 재생할 수 없는 곡 ${n}개는 정보를 받을 수 없어 제외했어요.` : ''),
+  applied: 'Spotify에 저장됨',
+  applyFailed: '저장 실패',
+  confirmTitle: (n: number) => `Spotify에 ${n}개를 저장할까요?`,
+  confirmBody: '내 Spotify 보관함에 추가돼요. 나중에 `ytm2spotify undo`로 되돌릴 수 있어요.',
+  confirmAll: '모두 저장',
+  confirmTrial: '앨범 5개만 먼저 저장해 보기',
+  cancel: '취소',
+  saving: '저장하는 중…',
+  savedResult: (ok: number, failed: number) => (failed ? `${ok}개 저장, ${failed}개 실패` : `${ok}개를 저장했어요`),
+  nothingToSave: '저장할 항목이 없어요',
+  preserveTitle: '옮기지 못한 곡 보관',
+  preserveBody: (n: number) => `보관하기로 한 곡 ${n}개를 YT Music 비공개 플레이리스트로 모아둬요.`,
+  preserveButton: 'YT Music에 보관 목록 만들기',
+  preserveDone: (n: number) => `YT Music에 ${n}곡짜리 보관 목록을 만들었어요`,
+  preserveOpen: '보관 목록 열기',
+  csv: 'CSV로 내려받기',
+  searching: '검색하는 중…',
+  noResults: '검색 결과가 없어요',
+
   ugc: '사용자 업로드 영상',
   reason: {
     album_title_match: '앨범명 일치', artist_match: '아티스트 일치', year_match: '연도 일치',
@@ -81,8 +104,10 @@ const ko = {
     track_count_match: '트랙 수 일치', name_match: '이름 일치', top_result: '검색 1위',
     title_match: '곡명 일치', album_match: '앨범 일치', artist_from_title: '제목에서 아티스트 추출',
     length_diff: (n: number) => `길이 ${n}초 차`,
+    title_differs: '제목 다름', artist_differs: '아티스트 다름', year_differs: (y: number) => `발매연도 ${y}`, name_differs: '이름 다름',
   },
-  variant: {cover: '커버곡', remix: '리믹스', version: (v: string) => v},
+  variant: {cover: '커버곡', remix: '리믹스', live: '라이브 영상', speed: '속도 변형', version: '다른 버전'} as Record<string, string>,
+  groupTitleOf: (v: string, n: number) => `${v} ${n}개가 비슷해요`,
 };
 
 type Messages = typeof ko;
@@ -142,6 +167,29 @@ const en: Messages = {
   shortcuts: 'Keyboard shortcuts',
   keys: {move: 'Move', accept: 'Approve', skip: 'Skip', keep: 'Keep', alts: 'Other matches'},
 
+  loading: 'Loading…',
+  loadError: e => `Couldn't reach the server: ${e}`,
+  emptyLibrary: 'Nothing matched yet. Run `ytm2spotify sync` and `ytm2spotify match` in the terminal first.',
+  unavailable: n => (n ? `${n} liked ${plural(n, 'song is', 'songs are')} unavailable on YT Music and couldn't be read.` : ''),
+  applied: 'Saved to Spotify',
+  applyFailed: "Couldn't save",
+  confirmTitle: n => `Save ${n} to Spotify?`,
+  confirmBody: 'They will be added to your Spotify library. You can undo with `ytm2spotify undo`.',
+  confirmAll: 'Save all',
+  confirmTrial: 'Try 5 albums first',
+  cancel: 'Cancel',
+  saving: 'Saving…',
+  savedResult: (ok, failed) => (failed ? `Saved ${ok}, ${failed} failed` : `Saved ${ok}`),
+  nothingToSave: 'Nothing to save',
+  preserveTitle: "Keep what didn't move",
+  preserveBody: n => `Put the ${n} ${plural(n, 'song', 'songs')} you chose to keep into a private YT Music playlist.`,
+  preserveButton: 'Create YT Music playlist',
+  preserveDone: n => `Created a YT Music playlist with ${n} ${plural(n, 'song', 'songs')}`,
+  preserveOpen: 'Open playlist',
+  csv: 'Download CSV',
+  searching: 'Searching…',
+  noResults: 'No results',
+
   ugc: 'User upload',
   reason: {
     album_title_match: 'Album title matches', artist_match: 'Artist matches', year_match: 'Year matches',
@@ -149,8 +197,10 @@ const en: Messages = {
     track_count_match: 'Track count matches', name_match: 'Name matches', top_result: 'Top search result',
     title_match: 'Title matches', album_match: 'Album matches', artist_from_title: 'Artist taken from title',
     length_diff: n => `${n}s length difference`,
+    title_differs: 'Title differs', artist_differs: 'Artist differs', year_differs: y => `Released ${y}`, name_differs: 'Name differs',
   },
-  variant: {cover: 'cover', remix: 'remix', version: v => v},
+  variant: {cover: 'cover', remix: 'remix', live: 'live video', speed: 'sped-up/slowed', version: 'alternate version'},
+  groupTitleOf: (v, n) => `${n} similar ${v}${n === 1 ? '' : 's'}`,
 };
 
 export const MESSAGES: Record<Lang, Messages> = {ko, en};
@@ -172,13 +222,13 @@ export function saveLang(lang: Lang) {
 // Reason codes come from the matcher as [code, level, param?]
 export function reasonText(t: Messages, code: string, param?: string | number): string {
   if (code === 'length_diff') return t.reason.length_diff(Number(param));
-  if (code.startsWith('variant:')) return variantText(t, code, param);
+  if (code === 'year_differs') return t.reason.year_differs(Number(param));
+  if (code.startsWith('variant:')) return variantText(t, code);
   const r = (t.reason as Record<string, unknown>)[code];
   return typeof r === 'string' ? r : code;
 }
 
-export function variantText(t: Messages, code: string, param?: string | number): string {
+export function variantText(t: Messages, code: string): string {
   const kind = code.split(':')[1];
-  if (kind === 'version') return t.variant.version(String(param ?? ''));
-  return (t.variant as Record<string, unknown>)[kind] as string ?? kind;
+  return t.variant[kind] ?? kind;
 }

@@ -10,3 +10,5 @@ build/
 spikes/output/
 node_modules/
 spikes/astryx-ui/dist/
+web/node_modules/
+web/dist/

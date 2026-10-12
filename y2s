@@ -1,0 +1,5 @@
+#!/bin/sh
+# Dev launcher. Python 3.14 skips .pth files marked hidden, and macOS keeps re-hiding the
+# editable-install .pth under ~/Desktop — so run from source instead of relying on it.
+here="$(cd "$(dirname "$0")" && pwd)"
+PYTHONPATH="$here/src" exec "$here/.venv/bin/python" -m ytm2spotify "$@"
