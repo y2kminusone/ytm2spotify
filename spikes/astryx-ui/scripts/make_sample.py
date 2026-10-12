@@ -48,7 +48,7 @@ def album_src(needle):
             "meta": " · ".join(filter(None, [a.get("year"), a.get("type")])), "img": thumb(a.get("thumbnails"))}
 
 def cand(c, score, why, meta=None):
-    return {**c, "score": score, "why": why, "meta": meta or " · ".join(filter(None, [c.get("year"), f'{c["tracks"]}곡' if c.get("tracks") else None]))}
+    return {**c, "score": score, "why": why, "meta": meta or c.get("year") or ""}  # track count is formatted by the UI (i18n)
 
 # ---- albums (only ones that exist in the user's library)
 for needle, q, status, score, why in [
@@ -134,6 +134,30 @@ for s in S:
         if a is not None and c.get("dur"):
             diff = abs(a - c["dur"])
             c["why"].append([f"길이 {diff}초 차", "ok" if diff <= 3 else "warn" if diff <= 10 else "bad"])
+# reasons are stored as language-neutral codes; the UI translates them
+CODES = {
+    "앨범명 일치": "album_title_match", "아티스트 일치": "artist_match", "연도 일치": "year_match",
+    "이미 내 Spotify에 있음": "already_saved", "별칭으로 일치": "alias_match", "별칭 일치": "alias_match",
+    "아티스트 로마자 표기": "romanized_artist", "트랙 수 일치": "track_count_match", "이름 일치": "name_match",
+    "검색 1위": "top_result", "곡명 일치": "title_match", "앨범 일치": "album_match",
+    "제목에서 아티스트 추출": "artist_from_title", "사용자 업로드라 확인 필요": None,
+    "커버곡": "variant:cover", "리믹스": "variant:remix", "원곡으로 대체": None,
+}
+for s_ in S:
+    for c in s_["cands"]:
+        out = []
+        for w in c["why"]:
+            text, level = w[0], w[1]
+            if text.startswith("길이 "):
+                out.append(["length_diff", level, int(text.split()[1].rstrip("초"))])
+            elif text.startswith("다른 버전 ("):
+                out.append(["variant:version", level, text[len("다른 버전 ("):-1]])
+            elif text in CODES:
+                if CODES[text]:
+                    out.append([CODES[text], level])
+            else:
+                raise SystemExit(f"no code for reason: {text}")
+        c["why"] = out
 dst = Path(__file__).resolve().parents[1] / "src" / "sample.json"
 dst.write_text(json.dumps({"totals": {"album": len(albums), "artist": len(artists), "track": len({t['videoId'] for t in liked})}, "items": S}, ensure_ascii=False, indent=1))
 print("wrote", dst, len(S), "items")
