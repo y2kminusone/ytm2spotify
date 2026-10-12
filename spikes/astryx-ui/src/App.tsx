@@ -62,6 +62,7 @@ export default function App() {
   const todo = inKind.filter(d => d.decision === 'pending');
   const bulk = todo.filter(d => d.cands.length && scoreOf(d) >= cut);
   const count = (k: Decision) => items.filter(d => d.decision === k).length;
+  const previewN = previewing ? bulk.length : 0;
   const group = kind === 'track' ? inKind.filter(d => d.src.group && d.decision !== 'preserve') : [];
 
   const say = (t: string) => { setToast(t); window.setTimeout(() => setToast(null), 1600); };
@@ -103,23 +104,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className="summary" aria-live="polite">
-          <div className="summary-in">
-            <div className="tally">
-              <span className="t-accept"><b>{count('accept')}</b> 저장{previewing && bulk.length > 0 && <em> +{bulk.length} 예정</em>}</span>
-              <span className="t-preserve"><b>{count('preserve')}</b> 보관</span>
-              <span className="t-skip"><b>{count('skip')}</b> 건너뜀</span>
-              <span className="t-todo"><b>{count('pending') - (previewing ? bulk.length : 0)}</b> 확인 전</span>
-            </div>
-            <div className="meter" aria-hidden>
-              {(['accept', 'preview', 'preserve', 'skip', 'pending'] as const).map(k => {
-                const n = k === 'preview' ? (previewing ? bulk.length : 0) : k === 'pending' ? count('pending') - (previewing ? bulk.length : 0) : count(k);
-                return n > 0 ? <span key={k} className={`m-${k}`} style={{flexGrow: n}} /> : null;
-              })}
-            </div>
-          </div>
-        </div>
-
+        <div className="shell">
         <main className="main">
           <section className="intro">
             <Heading level={1}>
@@ -144,13 +129,6 @@ export default function App() {
                 <SegmentedControlItem key={f} value={f} label={`${FILTER_LABEL[f]} ${inKind.filter(d => matchesFilter(d, f)).length}`} />
               ))}
             </SegmentedControl>
-            <div className="bulk">
-              <Slider label="자동 승인 기준 점수" isLabelHidden value={cut} min={0.7} max={1} step={0.01}
-                onChange={(v: number) => { setCut(v); setPreviewing(true); }} formatValue={(v: number) => `${Math.round(v * 100)}점`} valueDisplay="text" width={200} />
-              <Button label={bulk.length ? `${Math.round(cut * 100)}점 이상 ${bulk.length}개 승인` : '승인할 항목 없음'}
-                isDisabled={!bulk.length}
-                onClick={() => { setItems(xs => xs.map(d => (bulk.includes(d) ? {...d, decision: 'accept'} : d))); setPreviewing(false); say(`${bulk.length}개를 승인했어요`); }} />
-            </div>
           </div>
 
           {group.length >= 2 && (
@@ -177,14 +155,50 @@ export default function App() {
           </ol>
         </main>
 
-        <footer className="dock">
-          <div className="dock-in">
-            <div className="keys" aria-hidden>
-              <Kbd keys="up" /><Kbd keys="down" /> 이동 <Kbd keys="Y" /> 승인 <Kbd keys="N" /> 건너뛰기 <Kbd keys="P" /> 보관
+        <aside className="side-panel" aria-label="진행 상황과 저장">
+          <section className="panel-block" aria-live="polite">
+            <Text weight="semibold" display="block">진행 상황</Text>
+            <div className="meter" aria-hidden>
+              {(['accept', 'preview', 'preserve', 'skip', 'pending'] as const).map(k => {
+                const n = k === 'preview' ? previewN : k === 'pending' ? count('pending') - previewN : count(k);
+                return n > 0 ? <span key={k} className={`m-${k}`} style={{flexGrow: n}} /> : null;
+              })}
             </div>
-            <Button variant="primary" size="lg" label={`Spotify에 ${count('accept')}개 저장하기`} onClick={() => say('시안이라 여기서 멈춰요. 다음 화면은 저장 진행이에요')} />
+            <dl className="tally">
+              <div className="t-accept"><dt><i className="m-accept" />저장</dt><dd>{count('accept')}{previewN > 0 && <em>+{previewN}</em>}</dd></div>
+              <div><dt><i className="m-preserve" />보관</dt><dd>{count('preserve')}</dd></div>
+              <div><dt><i className="m-skip" />건너뜀</dt><dd>{count('skip')}</dd></div>
+              <div className="t-todo"><dt><i className="m-pending" />확인 전</dt><dd>{count('pending') - previewN}</dd></div>
+            </dl>
+          </section>
+
+          <section className="panel-block">
+            <Text weight="semibold" display="block">한 번에 승인</Text>
+            <Text type="supporting" display="block">기준 점수를 움직이면 목록에서 바로 미리 보여줘요.</Text>
+            <Slider label="일괄 승인 기준 점수" isLabelHidden value={cut} min={0.7} max={1} step={0.01}
+              onChange={(v: number) => { setCut(v); setPreviewing(true); }} formatValue={(v: number) => `${Math.round(v * 100)}점`} valueDisplay="text" width="100%" />
+            <Button width="100%" label={bulk.length ? `${Math.round(cut * 100)}점 이상 ${bulk.length}개 승인` : '기준을 넘는 항목이 없어요'}
+              isDisabled={!bulk.length}
+              onClick={() => { setItems(xs => xs.map(d => (bulk.includes(d) ? {...d, decision: 'accept'} : d))); setPreviewing(false); say(`${bulk.length}개를 승인했어요`); }} />
+          </section>
+
+          <section className="panel-block keys">
+            <Text weight="semibold" display="block">키보드로 빠르게</Text>
+            <ul>
+              <li><span><Kbd keys="up" /><Kbd keys="down" /></span>이동</li>
+              <li><Kbd keys="Y" />승인</li>
+              <li><Kbd keys="N" />건너뛰기</li>
+              <li><Kbd keys="P" />보관</li>
+              <li><Kbd keys="enter" />다른 후보 보기</li>
+            </ul>
+          </section>
+
+          <div className="panel-cta">
+            <Button variant="primary" size="lg" width="100%" label={`Spotify에 ${count('accept')}개 저장하기`} onClick={() => say('시안이라 여기서 멈춰요. 다음 화면은 저장 진행이에요')} />
+            {count('pending') > 0 && <Text type="supporting" display="block">확인 전 {count('pending')}개는 저장하지 않고 남겨둬요</Text>}
           </div>
-        </footer>
+        </aside>
+        </div>
         {toast && <div className="toast" role="status">{toast}</div>}
       </div>
     </Theme>
@@ -236,45 +250,31 @@ function PairRow({d, selected, willAccept, cutLabel, isOpen, onSelect, onToggle,
         {willAccept && <span className="will-accept">{cutLabel} 이상이라 일괄 승인 대상이에요</span>}
         {d.decision !== 'pending' && <span className="chosen-note">{DECISION_NOTE[d.decision]}</span>}
       </div>
-      <div className="side from">
+      <div className="compare">
         <Cover src={d.src.img} alt="" round={round} variant="ytm" />
-        <div className="names">
-          <Text weight="semibold" display="block">{d.src.title}</Text>
+        <div className="names from">
+          <Text weight="semibold" maxLines={2}>{d.src.title}</Text>
           <Text type="supporting" maxLines={1}>{d.src.artists || 'YT Music 구독'}</Text>
-          <span className="meta-row"><Meta text={d.kind === 'track' && d.src.meta && !d.src.meta.includes(' · ') ? `앨범 정보 없음 · ${d.src.meta}` : d.src.meta || ' '} /></span>
+          <Meta text={d.kind === 'track' && d.src.meta && !d.src.meta.includes(' · ') ? `앨범 정보 없음 · ${d.src.meta}` : d.src.meta || ' '} />
         </div>
-      </div>
-
-      <div className="link" aria-hidden><span className="arrow" /></div>
-
-      <div className="side to">
-        {c ? (
-          <>
-            <Cover src={c.img} alt="" round={round} variant="sp" />
-            <div className="names">
-              <Text weight="semibold" display="block">{c.title}</Text>
+        <div className="link" aria-hidden><span className="arrow" /></div>
+        <Cover src={c?.img ?? null} alt="" round={round} variant={c ? 'sp' : 'empty'} />
+        <div className="names to">
+          {c ? (
+            <>
+              <Text weight="semibold" maxLines={2}>{c.title}</Text>
               <Text type="supporting" maxLines={1}>{c.artists || 'Spotify 아티스트'}</Text>
-              <span className="meta-row"><Meta text={c.meta || ' '} /></span>
-            </div>
-          </>
-        ) : (
-          <>
-            <Cover src={null} alt="" round={round} variant="empty" />
-            <div className="names">
+              <Meta text={c.meta || ' '} />
+            </>
+          ) : (
+            <>
               <Text weight="semibold" color="secondary">Spotify에서 찾지 못했어요</Text>
               <Text type="supporting">보관하면 YT Music의 ‘옮기지 못한 곡’ 목록에 모아둬요</Text>
-            </div>
-          </>
-        )}
+              <span />
+            </>
+          )}
+        </div>
       </div>
-
-      {reasons.length > 0 && (
-        <ul className="reasons" aria-label="판단 근거">
-          {reasons.map(([t, k]) => (
-            <li key={t} className={`reason r-${k}`}><span className="r-icon" aria-hidden>{k === 'ok' ? '✓' : '!'}</span>{t}</li>
-          ))}
-        </ul>
-      )}
 
       <div className="decide" onClick={e => e.stopPropagation()}>
         <div className="choices">
@@ -284,6 +284,14 @@ function PairRow({d, selected, willAccept, cutLabel, isOpen, onSelect, onToggle,
           <span className="sep" aria-hidden />
           <span className="d d-find"><Button size="sm" variant="ghost" icon={<Icon icon="search" />} label={d.cands.length > 1 ? `다른 후보 ${d.cands.length - 1}개` : '다른 곡 찾기'} onClick={onToggle} /></span>
         </div>
+        {reasons.length > 0 && (
+          <ul className="reasons" aria-label="판단 근거">
+          {reasons.map(([t, k]) => (
+            <li key={t} className={`reason r-${k}`}><span className="r-icon" aria-hidden>{k === 'ok' ? '✓' : '!'}</span>{t}</li>
+          ))}
+        </ul>
+        )}
+
       </div>
 
       {isOpen && (
