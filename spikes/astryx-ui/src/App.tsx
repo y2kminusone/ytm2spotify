@@ -156,8 +156,11 @@ export default function App() {
         </main>
 
         <aside className="side-panel" aria-label="진행 상황과 저장">
-          <section className="panel-block" aria-live="polite">
-            <Text weight="semibold" display="block">진행 상황</Text>
+          <section className="panel-block progress" aria-live="polite">
+            <Text type="supporting" display="block">진행 상황</Text>
+            <p className="progress-headline">
+              {count('pending') - previewN > 0 ? <>확인할 항목이 <b>{count('pending') - previewN}개</b> 남았어요</> : <>모두 확인했어요</>}
+            </p>
             <div className="meter" aria-hidden>
               {(['accept', 'preview', 'preserve', 'skip', 'pending'] as const).map(k => {
                 const n = k === 'preview' ? previewN : k === 'pending' ? count('pending') - previewN : count(k);
@@ -170,6 +173,8 @@ export default function App() {
               <div><dt><i className="m-skip" />건너뜀</dt><dd>{count('skip')}</dd></div>
               <div className="t-todo"><dt><i className="m-pending" />확인 전</dt><dd>{count('pending') - previewN}</dd></div>
             </dl>
+            <Button variant="primary" size="lg" width="100%" label={`Spotify에 ${count('accept')}개 저장하기`} onClick={() => say('시안이라 여기서 멈춰요. 다음 화면은 저장 진행이에요')} />
+            {count('pending') > 0 && <Text type="supporting" display="block">확인 전 항목은 저장하지 않고 남겨둬요</Text>}
           </section>
 
           <section className="panel-block">
@@ -182,8 +187,8 @@ export default function App() {
               onClick={() => { setItems(xs => xs.map(d => (bulk.includes(d) ? {...d, decision: 'accept'} : d))); setPreviewing(false); say(`${bulk.length}개를 승인했어요`); }} />
           </section>
 
-          <section className="panel-block keys">
-            <Text weight="semibold" display="block">키보드로 빠르게</Text>
+          <details className="panel-keys">
+            <summary>키보드 단축키</summary>
             <ul>
               <li><span><Kbd keys="up" /><Kbd keys="down" /></span>이동</li>
               <li><Kbd keys="Y" />승인</li>
@@ -191,12 +196,7 @@ export default function App() {
               <li><Kbd keys="P" />보관</li>
               <li><Kbd keys="enter" />다른 후보 보기</li>
             </ul>
-          </section>
-
-          <div className="panel-cta">
-            <Button variant="primary" size="lg" width="100%" label={`Spotify에 ${count('accept')}개 저장하기`} onClick={() => say('시안이라 여기서 멈춰요. 다음 화면은 저장 진행이에요')} />
-            {count('pending') > 0 && <Text type="supporting" display="block">확인 전 {count('pending')}개는 저장하지 않고 남겨둬요</Text>}
-          </div>
+          </details>
         </aside>
         </div>
         {toast && <div className="toast" role="status">{toast}</div>}
