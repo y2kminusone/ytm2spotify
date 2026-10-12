@@ -33,7 +33,10 @@ interface Rec {
   key: string; kind: Kind; src: Src; status: Status; cands: Cand[]; variant: string | null; parsed_artist: string | null;
   decision: Decision; chosen: number; apply_status: 'none' | 'done' | 'failed'; apply_error: string | null;
 }
-interface State {records: Rec[]; library_uris: string[]; unavailable_tracks: number; cut: number; preserve_playlist: string | null}
+interface State {
+  records: Rec[]; library_uris: string[]; unavailable_tracks: number; cut: number; preserve_playlist: string | null;
+  unmatched: Partial<Record<Kind, number>>; quota_reset_at: number | null;
+}
 
 const KINDS: Kind[] = ['album', 'artist', 'track'];
 // Filters follow the user's decision, not the matcher's verdict: "to check" means "I haven't decided yet".
@@ -62,7 +65,8 @@ export default function App() {
   useEffect(() => { document.documentElement.lang = lang; saveLang(lang); }, [lang]);
 
   const [items, setItems] = useState<Rec[] | null>(null);
-  const [meta, setMeta] = useState({unavailable: 0, playlist: null as string | null});
+  const [meta, setMeta] = useState({unavailable: 0, playlist: null as string | null, unmatched: {} as Partial<Record<Kind, number>>, quotaResetAt: null as number | null});
+  const [view, setView] = useState<'review' | 'done'>(q.get('view') === 'done' ? 'done' : 'review');
   const [libraryUris, setLibraryUris] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [kind, setKind] = useState<Kind>(() => KINDS.includes(q.get('tab') as Kind) ? (q.get('tab') as Kind) : 'album');
@@ -81,7 +85,7 @@ export default function App() {
       const s = await api<State>('/api/state');
       setItems(s.records);
       setCut(s.cut);
-      setMeta({unavailable: s.unavailable_tracks, playlist: s.preserve_playlist});
+      setMeta({unavailable: s.unavailable_tracks, playlist: s.preserve_playlist, unmatched: s.unmatched, quotaResetAt: s.quota_reset_at});
       setLibraryUris(new Set(s.library_uris));
       setLoadError(null);
     } catch (e) { setLoadError(String((e as Error).message)); }
@@ -161,8 +165,9 @@ export default function App() {
     const u = new URL(location.href);
     u.searchParams.set('tab', kind);
     u.searchParams.set('filter', filter);
+    if (view === 'done') u.searchParams.set('view', 'done'); else u.searchParams.delete('view');
     history.replaceState(null, '', u);
-  }, [kind, filter]);
+  }, [kind, filter, view]);
   const panelRef = useFloatyPanel();
 
   const save = async (trial: boolean) => {
@@ -172,6 +177,7 @@ export default function App() {
       say(r.saved + r.failed + r.already ? t.savedResult(r.saved, r.failed) + (r.already ? ` · ${t.alreadyCount(r.already)}` : '') : t.nothingToSave);
       setConfirming(false);
       await load();
+      if (!trial) { setView('done'); window.scrollTo({top: 0}); }
     } catch (e) { fail(e); } finally { setBusy(null); }
   };
   const preserve = async () => {
@@ -191,7 +197,8 @@ export default function App() {
         <header className="top">
           <div className="top-in">
             <div className="stepper">
-              <Stepper activeStep={3} density="compact" horizontalOptions={{minimumStepWidth: 84, collapsedVariant: 'withLabel'}}>
+              <Stepper activeStep={view === 'done' ? 5 : 3} density="compact" horizontalOptions={{minimumStepWidth: 84, collapsedVariant: 'withLabel'}}
+                onStepClick={i => { if (i === 3) setView('review'); if (i === 5 && all.some(d => d.apply_status === 'done')) setView('done'); }}>
                 {t.steps.map((l, i) => <Step key={i} step={i} label={l} />)}
               </Stepper>
             </div>
@@ -206,6 +213,9 @@ export default function App() {
 
         {!items ? (
           <div className="shell"><div className="lead"><Text color="secondary">{loadError ? t.loadError(loadError) : t.loading}</Text></div></div>
+        ) : view === 'done' ? (
+          <Results t={t} lang={lang} all={all} meta={meta} busy={busy} preservedTracks={preservedTracks}
+            onBack={() => setView('review')} onPreserve={preserve} />
         ) : items.length === 0 ? (
           <div className="shell"><div className="lead"><Text>{t.emptyLibrary}</Text></div></div>
         ) : (
@@ -303,6 +313,9 @@ export default function App() {
                 </div>
               )}
               {count('pending') > 0 && !confirming && <Text type="supporting" display="block">{t.saveNote}</Text>}
+              {!confirming && all.some(d => d.apply_status === 'done') && (
+                <Button variant="ghost" width="100%" label={t.seeResults} onClick={() => { setView('done'); window.scrollTo({top: 0}); }} />
+              )}
             </section>
 
             <section className="panel-block">
@@ -344,6 +357,77 @@ export default function App() {
       </div>
     </Theme>
     </InternationalizationProvider>
+  );
+}
+
+function Results({t, lang, all, meta, busy, preservedTracks, onBack, onPreserve}: {
+  t: T; lang: Lang; all: Rec[]; busy: string | null; preservedTracks: number;
+  meta: {playlist: string | null; unavailable: number; unmatched: Partial<Record<Kind, number>>; quotaResetAt: number | null};
+  onBack: () => void; onPreserve: () => void;
+}) {
+  const by = (k: Kind, f: (d: Rec) => boolean) => all.filter(d => d.kind === k && f(d)).length;
+  const rows: {k: Kind; saved: number; already: number; kept: number; skipped: number; failed: number; todo: number}[] = KINDS.map(k => ({
+    k,
+    saved: by(k, d => d.apply_status === 'done' && d.status !== 'exists'),
+    already: by(k, d => d.status === 'exists'),
+    kept: by(k, d => d.decision === 'preserve'),
+    skipped: by(k, d => d.decision === 'skip' && d.status !== 'exists'),
+    failed: by(k, d => d.apply_status === 'failed'),
+    todo: by(k, d => d.decision === 'pending') + (meta.unmatched[k] ?? 0),
+  }));
+  const savedTotal = rows.reduce((n, r) => n + r.saved, 0);
+  const unmatchedTotal = Object.values(meta.unmatched).reduce((n, x) => n + (x ?? 0), 0);
+  const resetAt = meta.quotaResetAt && meta.quotaResetAt * 1000 > Date.now()
+    ? new Date(meta.quotaResetAt * 1000).toLocaleString(lang === 'ko' ? 'ko-KR' : 'en', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'})
+    : null;
+  return (
+    <div className="shell results">
+      <div className="lead">
+        <section className="intro">
+          <Heading level={1}>{t.doneHeadline(savedTotal)}</Heading>
+          <Text type="large" color="secondary" as="p">{t.doneLede}</Text>
+        </section>
+      </div>
+      <main className="main">
+        <table className="result-table">
+          <thead><tr><th />{(['saved', 'already', 'kept', 'skipped', 'failed', 'todo'] as const).map(c => <th key={c}>{t.resultCol[c]}</th>)}</tr></thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.k}>
+                <th scope="row">{t.kind[r.k]}</th>
+                <td className="c-saved">{r.saved}</td><td>{r.already}</td><td>{r.kept}</td><td>{r.skipped}</td>
+                <td className={r.failed ? 'c-failed' : ''}>{r.failed}</td><td className={r.todo ? 'c-todo' : ''}>{r.todo}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {meta.unavailable > 0 && <Text type="supporting" as="p">{t.unavailable(meta.unavailable)}</Text>}
+
+        {unmatchedTotal > 0 && (
+          <div className="next-card">
+            <Text weight="semibold" display="block">{t.unmatchedTitle(unmatchedTotal)}</Text>
+            <Text type="supporting" display="block">{resetAt ? t.quotaUntil(resetAt) : t.unmatchedBody}</Text>
+            <code className="cmd">./y2s match</code>
+          </div>
+        )}
+      </main>
+      <aside className="side-panel">
+        <section className="panel-block">
+          <Text weight="semibold" display="block">{t.preserveTitle}</Text>
+          <Text type="supporting" display="block">{t.preserveBody(preservedTracks)}</Text>
+          <Button width="100%" label={busy === 'preserve' ? t.saving : t.preserveButton} isLoading={busy === 'preserve'}
+            isDisabled={!preservedTracks || busy !== null} onClick={onPreserve} />
+          <div className="panel-links">
+            {meta.playlist && <a href={`https://music.youtube.com/playlist?list=${meta.playlist}`} target="_blank" rel="noreferrer">{t.preserveOpen}</a>}
+            <a href="/api/preserved.csv">{t.csv}</a>
+          </div>
+        </section>
+        <section className="panel-block">
+          <Button width="100%" label={t.backToReview} onClick={onBack} />
+          <a className="panel-link-strong" href="https://open.spotify.com/collection/albums" target="_blank" rel="noreferrer">{t.openSpotify}</a>
+        </section>
+      </aside>
+    </div>
   );
 }
 

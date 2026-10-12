@@ -354,3 +354,21 @@
 @media (prefers-reduced-motion: reduce) { .pair.is-leaving { animation: none; opacity: .4; } }
 
 .dup-note { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--color-background-blue); color: var(--color-text-primary); }
+
+/* results */
+.results .main { padding-top: 0; }
+.result-table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--color-background-card);
+  border: 1px solid var(--color-border); border-radius: var(--radius-container); overflow: hidden; font-variant-numeric: tabular-nums; }
+.result-table th, .result-table td { padding: 14px 16px; text-align: right; border-bottom: 1px solid var(--color-border); }
+.result-table thead th { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); background: var(--color-background-muted); }
+.result-table tbody th { text-align: left; font-weight: 600; }
+.result-table tbody tr:last-child > * { border-bottom: 0; }
+.result-table td { font-size: 18px; }
+.result-table .c-saved { font-weight: 700; color: var(--color-text-green); }
+.result-table .c-failed { color: var(--color-text-red); font-weight: 700; }
+.result-table .c-todo { color: var(--keep-ink); font-weight: 700; }
+.results .main > p { margin-top: 10px; }
+.next-card { margin-top: 20px; display: grid; gap: 8px; padding: 18px; border-radius: var(--radius-container);
+  background: var(--color-warning-muted); border: 1px solid var(--color-border); }
+.cmd { justify-self: start; padding: 6px 10px; border-radius: 6px; background: var(--color-background-card); font-family: var(--font-family-code, ui-monospace, monospace); font-size: 13px; }
+.panel-link-strong { font-size: 14px; color: var(--color-text-primary); text-align: center; }

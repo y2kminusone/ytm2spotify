@@ -78,6 +78,12 @@ class Store:
         )
         return [r["key"] for r in rows]
 
+    def never_matched(self) -> dict[str, int]:
+        rows = self.db.execute(
+            """SELECT i.kind, COUNT(*) n FROM items i LEFT JOIN matches m ON m.source_key=i.key
+               WHERE i.service='ytm' AND i.removed=0 AND m.source_key IS NULL GROUP BY i.kind""")
+        return {r["kind"]: r["n"] for r in rows}
+
     def item(self, key: str) -> Item:
         row = self.db.execute("SELECT payload FROM items WHERE key=?", (key,)).fetchone()
         return Item.from_dict(json.loads(row["payload"]))
