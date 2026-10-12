@@ -1,0 +1,162 @@
+# ytm2spotify — 설계 문서 (초안)
+
+> 상태: **작성 중** · 관련: [PRD](PRD.md), [Spike 리포트](spikes/m0-report.md)
+
+## 1. 전체 구조
+
+```
+[YT Music] ⇄ YTMusicAdapter ⇄ [ 공통 모델 · 매칭 엔진 · 상태 저장 · UI ] ⇄ SpotifyAdapter ⇄ [Spotify]
+```
+
+- **어댑터:** 서비스별 차이(인증, 페이지네이션, 배치, 재시도, 필드 형식)를 숨기고 공통 인터페이스(`MusicService`)를 제공한다.
+- **코어:** 공통 모델만 다룬다. 어떤 서비스인지 알지 못한다.
+  → 역방향(v0.3)과 다른 서비스 추가 시 어댑터만 추가한다. 테스트는 가짜 어댑터로 한다.
+
+```python
+class MusicService(Protocol):
+    def get_albums(self) -> list[Album]: ...
+    def get_artists(self) -> list[Artist]: ...
+    def get_liked_tracks(self) -> list[Track]: ...
+    def search(self, query: SearchQuery) -> list[Album | Artist | Track]: ...
+    def save(self, items: list[Album | Artist | Track]) -> SaveResult: ...
+```
+
+## 2. 데이터 모델
+
+### 2.1 공통 모델 (어댑터 출력)
+
+```python
+@dataclass
+class Album:   service: str; id: str; title: str; artists: list[str]; year: int | None; track_count: int | None
+@dataclass
+class Artist:  service: str; id: str; name: str
+@dataclass
+class Track:   service: str; id: str; title: str; artists: list[str]; album: str | None
+               duration_s: int | None; isrc: str | None; video_type: str | None  # YTM 전용: ATV/OMV/UGC
+```
+
+### 2.2 매칭 레코드: 기계 판단 / 사람 결정 / 적용 결과를 분리
+
+| 칸 | 값 | 정하는 주체 |
+|---|---|---|
+| `match_status` | `exists`(이미 있음) / `auto`(자동 매칭) / `review`(검토 필요) / `substitute`(대체곡) / `not_found`(못 찾음) | 매칭 엔진 |
+| `decision` | `pending`(미정) / `accept`(+후보 id) / `skip`(건너뛰기) / `preserve`(이전 안 됨 목록으로) | 사용자 |
+| `apply_status` | `none`(안 함) / `done`(완료) / `failed`(+사유) | 적용 단계 |
+
+- 매칭을 다시 실행해도 `decision`은 덮어쓰지 않는다. (`pending`인 항목만 갱신)
+- 적용은 `decision=accept AND apply_status!=done`인 항목만 대상으로 하므로 **중단 후 재개가 자연스럽다.**
+- "자동 매칭을 사람이 바꾼 비율" 같은 품질 지표를 바로 계산할 수 있다.
+- 초기 기본값: `auto` → `accept`, `exists` → `skip`, `not_found` → `preserve`, `review`/`substitute` → `pending`. **UGC는 `auto`여도 `pending`이다** (Spike R4).
+
+### 2.3 저장소: SQLite → [ADR-002](adr/002-sqlite-state-store.md)
+
+사용자 데이터 폴더의 `ytm2spotify.db` 파일 하나에 저장한다. (Mac `~/Library/Application Support/ytm2spotify/`, Windows `%APPDATA%\ytm2spotify\`)
+
+```sql
+items        (key PK, kind, service, payload JSON, first_seen, last_seen, removed)
+             -- key = "{service}:{kind}:{id}", 양쪽 보관함 스냅샷
+matches      (source_key PK → items, match_status, candidates JSON, matcher_version,
+              decision, chosen_key, apply_status, apply_error, updated_at)
+search_cache (query_hash PK, response JSON, fetched_at)   -- Spotify 검색 결과 캐시
+meta         (k PK, v)                                     -- 스키마 버전, 마지막 동기화 시각, market 등
+```
+
+인증 정보(쿠키, 토큰)는 DB에 넣지 않고 별도 파일(권한 600)에 둔다 → §7.
+
+## 3. 전체 흐름
+
+```
+① 연결 → ② 불러오기(동기화) → ③ 매칭 → ④ 검토 → ⑤ 적용 → ⑥ 보존/결과
+```
+
+### 3.1 다시 실행할 때: 이어서 하기
+
+② 불러오기를 할 때마다 양쪽 보관함을 새로 읽어 `items`와 비교한다:
+
+| 경우 | 처리 |
+|---|---|
+| 새로 생긴 YTM 항목 | `items`에 추가 → 매칭 대상 |
+| 이미 있는 항목 | `last_seen`만 갱신, 기존 결정 유지 |
+| YTM에서 사라진 항목 | `removed=1` 표시 (삭제하지 않음). 검토 목록에서 숨긴다 |
+| Spotify에 새로 생긴 항목 | 아직 `pending`인 매칭 중 해당 항목과 일치하는 것을 `exists`로 바꾼다 |
+
+화면에는 "새 항목 12개가 추가됐어요"처럼 변경분을 알려준다. 처음부터 다시 하고 싶으면 **"처음부터 다시 하기"**(DB 초기화)를 쓴다.
+
+## 4. 매칭 알고리즘
+
+### 4.1 파이프라인
+
+```
+① 이미 있나? → ② 분류 → ③ 검색어 생성 → ④ 점수 → ⑤ 상태 결정
+```
+
+| 단계 | 내용 | 근거 |
+|---|---|---|
+| ① 이미 있나? | 불러온 Spotify 보관함과 로컬에서 비교한다(API 호출 없음). 일치하면 `exists` | 호출 절약 |
+| ② 분류 (곡) | `video_type`이 ATV/OMV/OFFICIAL_SOURCE_MUSIC이면 일반 경로. UGC면 제목을 "아티스트 - 곡명"으로 파싱한다. **괄호를 제거하기 전에 원본 제목에서 변형 키워드를 감지한다** | Spike R4: 커버/리믹스가 원곡과 1.00으로 오탐 |
+| ③ 검색어 | 항목당 최대 3개를 순서대로 시도하고, 충분한 후보가 나오면 멈춘다: 필드 검색(`track:… artist:…`) → 일반 검색 → 별칭 검색(`한글 (English)` 형태면 각 표기로) | Spike R4: `희대의 (HEEDAE)`, 로마자 표기 미탐 |
+| ④ 점수 | §4.2 | |
+| ⑤ 상태 | §4.3 | |
+
+**변형 키워드(초안):** `cover`, `커버`, `remix`, `리믹스`, `live`, `라이브`, `ver.`, `version`, `acoustic`, `inst`, `sped up`, `slowed`, `직캠`, `fancam`, `무대`, `stage`, `edit`, `mashup`, `flip`. 이 목록은 정답셋으로 튜닝한다.
+
+### 4.2 점수
+
+**정규화:** NFKC → 소문자 → 공백·문장부호 제거 후 비교한다(`서울전자음악단` = `서울 전자 음악단`). 판 정보(Deluxe, Remaster 등)와 `feat.` 구간은 별도로 추출해서 비교한다.
+
+| 종류 | 신호 (가중치는 정답셋으로 튜닝) |
+|---|---|
+| 앨범 | 앨범명, 아티스트, 발매연도(±1년 부분 점수), 트랙 수 |
+| 아티스트 | 이름, 검색 순위. **동명이인은 내 보관함 앨범의 아티스트와 겹치면 가산점** |
+| 곡 | 곡명, 아티스트, 앨범명, **재생 시간(±3초 일치, ±10초 초과 시 감점)** |
+
+**여러 판 처리 (Q4 결정):** YTM 제목에 판 정보가 있으면 판까지 일치하는 후보를 우선한다. 없으면 **일반판을 우선**하고, 트랙 수가 같으면 가산점을 준다.
+
+각 후보에는 **판단 근거**(예: "곡명 일치 · 길이 2초 차 · 아티스트 일치")를 같이 저장해서 검토 화면에 보여준다.
+
+### 4.3 상태 결정과 커트라인
+
+| 조건 | `match_status` | 초기 `decision` |
+|---|---|---|
+| 변형이 감지됨, 원곡 후보 있음 | `substitute` | `pending` |
+| 점수 ≥ `T_auto` | `auto` | `accept` (**UGC는 `pending`**) |
+| `T_review` ≤ 점수 < `T_auto` | `review` | `pending` |
+| 점수 < `T_review` 또는 후보 없음 | `not_found` | `preserve` |
+
+**원칙 (Q3 결정): 기본은 보수적으로, 검토는 빠르게.**
+- 기본 `T_auto`는 높게 둔다. 잘못 저장된 항목은 1,500개 중에서 찾아내기 어렵고, 한 번 보이면 결과 전체에 대한 신뢰가 떨어진다.
+- 대신 검토를 빠르게 한다 → §5: 점수순 정렬, **"이 점수 이상 모두 승인" 일괄 버튼**, 판단 근거 표시, 키보드 단축키, 유사 항목 묶음 처리.
+
+### 4.4 커트라인 보정 (데이터 기반)
+
+"커트라인"이 낮을수록 자동 승인이 많아진다(느슨). 목표는 **오탐률 ≤ 2%(PRD §7)를 지키는 가장 낮은 `T_auto`**, 즉 안전한 범위에서 검토를 최소화하는 값이다.
+
+| 단계 | 방법 | 서버 |
+|---|---|---|
+| v0.1 초기값 | 개발자 본인 보관함으로 만든 **정답셋**(F16)으로 커트라인을 정한다 | 없음 |
+| v0.1 개인 보정 | 사용자가 자동 매칭을 바꾸거나 해제한 기록 = 오탐 라벨. 이것으로 그 사용자에게 맞는 커트라인을 **로컬에서 제안**한다 ("검토 결과로 보면 0.85로 낮춰도 안전해요") | 없음 |
+| v0.2 익명 통계 공유 (선택) | "매칭 통계 내보내기": **곡명 없이** 점수, 종류, 자동 여부, 사용자 수정 여부만 담은 파일. 원하는 사용자만 GitHub Issue에 첨부한다 → 모이면 기본값 갱신 (F20) | 없음 |
+| 이후 (사용자 증가 시) | 동의한 사용자만 익명 통계 자동 전송 (서버리스) | 최소 |
+
+`matches.matcher_version`으로 어떤 알고리즘 버전이 매긴 점수인지 기록한다. 버전이 오르면 `pending` 항목만 재매칭한다.
+
+### 4.5 API 호출 예산
+
+- 항목당 검색 최대 3회, 검색 결과는 `search_cache`에 저장한다 → 재실행 시 0회.
+- 본인 데이터 기준(앨범 218 + 아티스트 8 + 좋아요 1,250 − 이미 있는 항목) 대략 1,500~3,000회. 429를 받으면 `Retry-After`만큼 대기한다.
+- 처리 속도는 M1에서 측정한다.
+
+## 5. 화면 흐름 / 와이어프레임
+<!-- TODO -->
+
+## 6. 기술 스택
+<!-- TODO -->
+
+## 7. 보안 / 프라이버시
+<!-- TODO -->
+
+## 8. 테스트 전략
+<!-- TODO -->
+
+## 9. 배포
+<!-- TODO -->
