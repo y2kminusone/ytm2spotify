@@ -185,7 +185,7 @@ export default function App() {
               <div><dt><i className="m-skip" />건너뜀</dt><dd>{count('skip')}</dd></div>
               <div className="t-todo"><dt><i className="m-pending" />확인 전</dt><dd>{count('pending') - previewN}</dd></div>
             </dl>
-            <Button variant="primary" size="lg" width="100%" label={`Spotify에 ${count('accept')}개 저장하기`} onClick={() => say('시안이라 여기서 멈춰요. 다음 화면은 저장 진행이에요')} />
+            <span className="save-btn"><Button variant="primary" size="lg" width="100%" label={`Spotify에 ${count('accept')}개 저장하기`} onClick={() => say('시안이라 여기서 멈춰요. 다음 화면은 저장 진행이에요')} /></span>
             {count('pending') > 0 && <Text type="supporting" display="block">확인 전 항목은 저장하지 않고 남겨둬요</Text>}
           </section>
 
