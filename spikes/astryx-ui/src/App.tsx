@@ -32,6 +32,7 @@ const STATUS_LABEL: Record<Status, string> = {review: '확인 필요', substitut
 const FILTERS = ['todo', 'auto', 'not_found', 'exists', 'all'] as const;
 type Filter = (typeof FILTERS)[number];
 const FILTER_LABEL: Record<Filter, string> = {todo: '확인 필요', auto: '자동으로 맞춤', not_found: 'Spotify에 없음', exists: '이미 있음', all: '전체'};
+const DECISION_NOTE: Record<Decision, string> = {pending: '', accept: 'Spotify에 저장할게요', skip: '옮기지 않아요', preserve: 'YT Music 보관 목록에 모아둘게요'};
 const WHY_COLOR = {ok: 'green', warn: 'orange', bad: 'red'} as const;
 
 const initialItems = (): Item[] =>
@@ -203,10 +204,15 @@ function PairRow({d, selected, isOpen, onSelect, onToggle, onDecide, onPick}: {
   const score = c ? Math.round(c.score * 100) : null;
   return (
     <li className={`pair status-${d.status} decision-${d.decision} ${selected ? 'is-selected' : ''}`} onClick={onSelect}>
+      <div className="head">
+        <span className="verdict">{STATUS_LABEL[d.status]}</span>
+        {score !== null && <span className="match">일치도 {score}%</span>}
+        {d.decision !== 'pending' && <span className="chosen-note">{DECISION_NOTE[d.decision]}</span>}
+      </div>
       <div className="side from">
         <Cover src={d.src.img} alt="" round={round} variant="ytm" />
         <div className="names">
-          <Text weight="semibold" maxLines={1}>{d.src.title}</Text>
+          <Text weight="semibold" display="block">{d.src.title}</Text>
           <Text type="supporting" maxLines={1}>{d.src.artists || 'YT Music 구독'}</Text>
           <span className="meta-row">
             {d.src.vt === 'UGC' && <span className="ugc">사용자 업로드</span>}
@@ -215,18 +221,14 @@ function PairRow({d, selected, isOpen, onSelect, onToggle, onDecide, onPick}: {
         </div>
       </div>
 
-      <div className="link" aria-label={c ? `일치도 ${score}점, ${STATUS_LABEL[d.status]}` : STATUS_LABEL[d.status]}>
-        <span className="arrow" aria-hidden />
-        <span className="verdict">{STATUS_LABEL[d.status]}</span>
-        {score !== null && <span className="match">일치도 {score}%</span>}
-      </div>
+      <div className="link" aria-hidden><span className="arrow" /></div>
 
       <div className="side to">
         {c ? (
           <>
             <Cover src={c.img} alt="" round={round} variant="sp" />
             <div className="names">
-              <Text weight="semibold" maxLines={1}>{c.title}</Text>
+              <Text weight="semibold" display="block">{c.title}</Text>
               <Text type="supporting" maxLines={1}>{c.artists || 'Spotify 아티스트'}</Text>
               <div className="why">
                 {c.why.filter(([t, k]) => k !== 'ok' && !t.startsWith('사용자 업로드')).map(([t, k]) => <Token key={t} size="sm" label={t} color={WHY_COLOR[k]} />)}
@@ -246,9 +248,11 @@ function PairRow({d, selected, isOpen, onSelect, onToggle, onDecide, onPick}: {
       </div>
 
       <div className="decide" onClick={e => e.stopPropagation()}>
+        <div className="choices">
         {c && <span className="d d-accept"><ToggleButton size="sm" label="승인" isPressed={d.decision === 'accept'} onPressedChange={() => onDecide('accept')} /></span>}
         <span className="d d-skip"><ToggleButton size="sm" label="건너뛰기" isPressed={d.decision === 'skip'} onPressedChange={() => onDecide('skip')} /></span>
         <span className="d d-preserve"><ToggleButton size="sm" label="보관" isPressed={d.decision === 'preserve'} onPressedChange={() => onDecide('preserve')} /></span>
+        </div>
         <Button size="sm" variant="ghost" icon={<Icon icon="search" />} label={d.cands.length > 1 ? `다른 후보 ${d.cands.length - 1}개` : '다른 곡 찾기'} onClick={onToggle} />
       </div>
 

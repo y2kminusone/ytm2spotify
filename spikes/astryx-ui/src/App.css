@@ -48,8 +48,9 @@
 .pairs { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
 .pair {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 104px minmax(0, 1fr) auto;
-  align-items: start; gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr);
+  grid-template-areas: 'head head head' 'from link to' 'act act act' 'alts alts alts';
+  align-items: start; gap: 12px 16px;
   padding: 14px 16px;
   background: var(--color-background-card);
   border: 1px solid var(--color-border);
@@ -96,32 +97,38 @@
 .cover-empty .source-dot { display: none; }
 
 /* the link: verdict first, match % second */
-.link, .decide { align-self: center; }
-.link { display: grid; justify-items: center; gap: 4px; text-align: center; }
-.arrow { width: 100%; height: 10px; position: relative; }
+.head { grid-area: head; display: flex; align-items: center; gap: 10px; }
+.from { grid-area: from; } .to { grid-area: to; }
+.link { grid-area: link; align-self: center; }
+.chosen-note { margin-left: auto; font-size: 12px; color: var(--color-text-secondary); }
+.arrow { display: block; width: 100%; height: 10px; position: relative; }
 .arrow::before { content: ''; position: absolute; left: 4px; right: 8px; top: 4px; height: 2px; background: var(--color-border-emphasized); }
 .arrow::after {
   content: ''; position: absolute; right: 4px; top: 0; border: 5px solid transparent;
   border-left: 7px solid var(--color-border-emphasized); border-right: 0;
 }
 .verdict {
-  padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  padding: 3px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap;
   background: var(--tone-bg, var(--color-background-muted)); color: var(--tone-fg, var(--color-text-secondary));
 }
-.match { font-size: 11px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.match { font-size: 13px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
 .status-auto       { --tone-bg: var(--color-success-muted); --tone-fg: var(--color-text-primary); }
 .status-review,
 .status-substitute { --tone-bg: var(--color-warning-muted); --tone-fg: var(--color-text-primary); }
 .status-not_found  { --tone-bg: var(--color-error-muted);   --tone-fg: var(--color-text-primary); }
 
-.decide { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+.decide {
+  grid-area: act; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  padding-top: 12px; border-top: 1px solid var(--color-border);
+}
+.choices { display: flex; gap: 6px; flex-wrap: wrap; }
 .decide .d button { box-shadow: inset 0 0 0 1px var(--color-border-emphasized); background: var(--color-background-card); }
 .decide .d button[aria-pressed="true"] { box-shadow: none; }
 .decide .d-accept button[aria-pressed="true"] { background: var(--color-success); color: var(--color-on-success); }
 .decide .d-preserve button[aria-pressed="true"] { background: var(--color-warning); color: var(--color-on-warning); }
 .decide .d-skip button[aria-pressed="true"] { background: var(--color-text-primary); color: var(--color-background-body); }
 
-.alts { grid-column: 1 / -1; display: grid; gap: 6px; padding-top: 12px; border-top: 1px dashed var(--color-border); }
+.alts { grid-area: alts; display: grid; gap: 6px; padding-top: 12px; border-top: 1px dashed var(--color-border); }
 .alt {
   display: flex; align-items: center; gap: 12px; padding: 8px; text-align: left;
   background: none; border: 1px solid transparent; border-radius: var(--radius-element); cursor: pointer; color: inherit; font: inherit;
@@ -160,9 +167,8 @@
   .top { grid-template-columns: 1fr auto; padding: 10px 16px; }
   .stepper { grid-column: 1 / -1; grid-row: 2; }
   .main { padding: 24px 16px 200px; }
-  .pair { grid-template-columns: minmax(0, 1fr) 72px; }
-  .pair .to { grid-column: 1 / -1; }
-  .pair .decide { grid-column: 1 / -1; justify-content: flex-start; }
+  .pair { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'head' 'from' 'to' 'act' 'alts'; }
+  .link { display: none; }
   .arrow { display: none; }
   .keys { display: none; }
   .dock-in { padding: 12px 16px; }
