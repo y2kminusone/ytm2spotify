@@ -10,12 +10,15 @@ type Status = 'auto' | 'review' | 'substitute' | 'not_found' | 'exists';
 type Decision = 'pending' | 'accept' | 'skip' | 'preserve';
 type Filter = 'todo' | 'accept' | 'preserve' | 'skip' | 'all';
 
-// Korean particle: '이라' after a final consonant, '라' after a vowel ('이라' for non-Hangul).
-function ira(word: string) {
+// Korean particles depend on whether the last syllable has a final consonant (받침):
+// 앨범은 / 아티스트는, 커버곡이라 / 리믹스라. Non-Hangul endings fall back to the consonant form.
+function hasBatchim(word: string) {
   const ch = word.trim().slice(-1).charCodeAt(0);
-  if (ch < 0xac00 || ch > 0xd7a3) return '이라';
-  return (ch - 0xac00) % 28 ? '이라' : '라';
+  if (ch < 0xac00 || ch > 0xd7a3) return true;
+  return (ch - 0xac00) % 28 !== 0;
 }
+const josa = (word: string, withB: string, withoutB: string) => word + (hasBatchim(word) ? withB : withoutB);
+const ira = (word: string) => (hasBatchim(word) ? '이라' : '라');
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
@@ -27,7 +30,7 @@ const ko = {
   filter: {todo: '확인 전', accept: '저장 예정', preserve: '보관', skip: '건너뜀', all: '전체'} as Record<Filter, string>,
   decisionNote: {pending: '', accept: 'Spotify에 저장할게요', skip: '옮기지 않아요', preserve: 'YT Music 보관 목록에 모아둘게요'} as Record<Decision, string>,
 
-  headline: (kind: string, n: number) => (n ? `${kind} ${n}개만 확인해 주세요` : `${kind}는 확인할 게 없어요`),
+  headline: (kind: string, n: number) => (n ? `${kind} ${n}개만 확인해 주세요` : `${josa(kind, '은', '는')} 확인할 게 없어요`),
   lede: (kind: string, total: number) => `${kind} ${total.toLocaleString('ko')}개 중 나머지는 자동으로 맞췄어요. 확인이 끝나면 한 번에 저장해요.`,
   prototypeNote: '시안이에요. 실제 보관함의 일부만 샘플로 넣었어요.',
   filterLabel: '상태로 보기',
