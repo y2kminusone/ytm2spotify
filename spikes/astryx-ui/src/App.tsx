@@ -105,11 +105,13 @@ export default function App() {
     <Theme theme={neutralTheme} mode="light">
       <div className="page">
         <header className="top">
+          <div className="top-in">
           <div className="brand"><span className="mark" aria-hidden />ytm2spotify</div>
           <div className="stepper">
             <Stepper activeStep={3} density="compact" horizontalOptions={{minimumStepWidth: 84, collapsedVariant: 'withLabel'}}>
               {['연결', '불러오기', '매칭', '검토', '저장', '결과'].map((l, i) => <Step key={l} step={i} label={l} />)}
             </Stepper>
+          </div>
           </div>
         </header>
 
