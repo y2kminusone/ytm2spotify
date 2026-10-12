@@ -206,12 +206,12 @@ function PairRow({d, selected, isOpen, onSelect, onToggle, onDecide, onPick}: {
       <div className="side from">
         <Cover src={d.src.img} alt="" round={round} variant="ytm" />
         <div className="names">
-          <Text weight="semibold" maxLines={2}>
-            {d.src.vt === 'UGC' && <span className="ugc">사용자 업로드</span>}
-            {d.src.title}
-          </Text>
+          <Text weight="semibold" maxLines={1}>{d.src.title}</Text>
           <Text type="supporting" maxLines={1}>{d.src.artists || 'YT Music 구독'}</Text>
-          {d.src.meta && <Meta text={d.src.meta} />}
+          <span className="meta-row">
+            {d.src.vt === 'UGC' && <span className="ugc">사용자 업로드</span>}
+            {d.src.meta && <Meta text={d.src.meta} />}
+          </span>
         </div>
       </div>
 
@@ -229,7 +229,7 @@ function PairRow({d, selected, isOpen, onSelect, onToggle, onDecide, onPick}: {
               <Text weight="semibold" maxLines={1}>{c.title}</Text>
               <Text type="supporting" maxLines={1}>{c.artists || 'Spotify 아티스트'}</Text>
               <div className="why">
-                {c.why.filter(([, k]) => k !== 'ok').map(([t, k]) => <Token key={t} size="sm" label={t} color={WHY_COLOR[k]} />)}
+                {c.why.filter(([t, k]) => k !== 'ok' && !t.startsWith('사용자 업로드')).map(([t, k]) => <Token key={t} size="sm" label={t} color={WHY_COLOR[k]} />)}
                 <span className="why-ok">{c.why.filter(([, k]) => k === 'ok').map(([t]) => t).join(', ')}</span>
               </div>
             </div>
