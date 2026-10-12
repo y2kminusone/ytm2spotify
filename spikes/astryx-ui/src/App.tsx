@@ -114,7 +114,7 @@ export default function App() {
         </header>
 
         <div className="shell">
-        <main className="main">
+        <div className="lead">
           <section className="intro">
             <Heading level={1}>
               {todo.length ? `${KIND_LABEL[kind]} ${todo.length}개만 확인해 주세요` : `${KIND_LABEL[kind]}는 확인할 게 없어요`}
@@ -140,6 +140,9 @@ export default function App() {
             </SegmentedControl>
           </div>
 
+        </div>
+
+        <main className="main">
           {group.length >= 2 && (
             <div className="group-hint">
               <div>

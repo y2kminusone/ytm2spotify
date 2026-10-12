@@ -294,3 +294,10 @@
 
 .side-panel { will-change: transform; transition: box-shadow .3s ease; }
 .side-panel.is-scrolled { box-shadow: 0 10px 30px var(--color-shadow), 0 2px 6px var(--color-shadow); }
+
+/* lead (title, tabs, filters) spans the page; the list and the side panel start on the same line */
+.shell { grid-template-areas: 'lead lead' 'main aside'; row-gap: 0; }
+.lead { grid-area: lead; padding-top: 40px; }
+.main { grid-area: main; padding-top: 0; }
+.side-panel { grid-area: aside; margin-top: 0; }
+@media (max-width: 1080px) { .shell { grid-template-areas: 'lead' 'main' 'aside'; } }
