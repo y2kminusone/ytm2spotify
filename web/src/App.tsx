@@ -36,11 +36,13 @@ interface Rec {
 interface State {records: Rec[]; unavailable_tracks: number; cut: number; preserve_playlist: string | null}
 
 const KINDS: Kind[] = ['album', 'artist', 'track'];
-const FILTERS = ['todo', 'auto', 'not_found', 'exists', 'all'] as const;
+// Filters follow the user's decision, not the matcher's verdict: "to check" means "I haven't decided yet".
+const FILTERS = ['todo', 'accept', 'preserve', 'skip', 'all'] as const;
 type Filter = (typeof FILTERS)[number];
+const LEAVE_MS = 650;  // a decided row lingers briefly (and fades) so the user sees where it went
 
 const matchesFilter = (d: Rec, f: Filter) =>
-  f === 'all' || (f === 'todo' ? d.status === 'review' || d.status === 'substitute' : d.status === f);
+  f === 'all' || (f === 'todo' ? d.decision === 'pending' : d.decision === f);
 const chosenOf = (d: Rec): Cand | undefined => d.cands[Math.min(d.chosen, d.cands.length - 1)];
 const scoreOf = (d: Rec) => chosenOf(d)?.score ?? 0;
 const mmss = (s: number | null) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
@@ -71,6 +73,7 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState<'save' | 'preserve' | null>(null);
+  const [leaving, setLeaving] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     try {
@@ -89,6 +92,9 @@ export default function App() {
   // optimistic local update + persist
   const setDecision = (keys: string[], decision: Decision, chosen?: number) => {
     const ks = new Set(keys);
+    // keep just-decided rows on screen for a moment, then let the filter drop them
+    setLeaving(prev => new Set([...prev, ...keys]));
+    window.setTimeout(() => setLeaving(prev => { const n = new Set(prev); keys.forEach(k => n.delete(k)); return n; }), LEAVE_MS);
     setItems(xs => xs && xs.map(d => (ks.has(d.key) ? {...d, decision, chosen: chosen ?? d.chosen} : d)));
     api('/api/decision', {keys, decision, chosen: chosen ?? null}).catch(e => { fail(e); load(); });
   };
@@ -99,8 +105,9 @@ export default function App() {
 
   const all = items ?? [];
   const rows = useMemo(
-    () => all.filter(d => d.kind === kind && matchesFilter(d, filter)).sort((a, b) => scoreOf(b) - scoreOf(a)),
-    [all, kind, filter],
+    () => all.filter(d => d.kind === kind && (matchesFilter(d, filter) || leaving.has(d.key)))
+      .sort((a, b) => scoreOf(b) - scoreOf(a)),
+    [all, kind, filter, leaving],
   );
   const inKind = all.filter(d => d.kind === kind);
   const todo = inKind.filter(d => d.decision === 'pending');
@@ -119,7 +126,8 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).closest('input, textarea')) return;
       const d = rows[sel];
-      const next = () => setSel(s => Math.min(rows.length - 1, s + 1));
+      // in "to check" the decided row leaves, so the next one slides into the same index
+      const next = () => { if (filter !== 'todo') setSel(s => Math.min(rows.length - 1, s + 1)); };
       if (e.key === 'ArrowDown' || e.key === 'j') setSel(s => Math.min(rows.length - 1, s + 1));
       else if (e.key === 'ArrowUp' || e.key === 'k') setSel(s => Math.max(0, s - 1));
       else if (!d) return;
@@ -232,7 +240,7 @@ export default function App() {
             <ol className="pairs">
               {rows.length === 0 && <li className="empty"><Text color="secondary">{t.empty}</Text></li>}
               {rows.map((d, i) => (
-                <PairRow key={d.key} d={d} t={t} selected={i === sel} willAccept={previewing && bulk.includes(d)} cut={Math.round(cut * 100)}
+                <PairRow key={d.key} d={d} t={t} selected={i === sel} isLeaving={leaving.has(d.key) && !matchesFilter(d, filter)} willAccept={previewing && bulk.includes(d)} cut={Math.round(cut * 100)}
                   isOpen={open === d.key}
                   onSelect={() => setSel(i)} onToggle={() => setOpen(o => (o === d.key ? null : d.key))}
                   onDecide={k => toggle(d, k)}
@@ -345,8 +353,8 @@ function metaOf(t: T, s: Src, side: 'from' | 'to') {
   return [];
 }
 
-function PairRow({d, t, selected, willAccept, cut, isOpen, onSelect, onToggle, onDecide, onPick, onSearch}: {
-  d: Rec; t: T; selected: boolean; willAccept: boolean; cut: number; isOpen: boolean;
+function PairRow({d, t, selected, isLeaving, willAccept, cut, isOpen, onSelect, onToggle, onDecide, onPick, onSearch}: {
+  d: Rec; t: T; selected: boolean; isLeaving: boolean; willAccept: boolean; cut: number; isOpen: boolean;
   onSelect: () => void; onToggle: () => void; onDecide: (k: Decision) => void; onPick: (j: number) => void;
   onSearch: (q: string) => Promise<number>;
 }) {
@@ -363,7 +371,7 @@ function PairRow({d, t, selected, willAccept, cut, isOpen, onSelect, onToggle, o
   const note = d.apply_status === 'done' ? t.applied : d.apply_status === 'failed' ? `${t.applyFailed}: ${d.apply_error ?? ''}` : t.decisionNote[d.decision];
 
   return (
-    <li className={`pair status-${d.status} decision-${d.decision} ${selected ? 'is-selected' : ''} ${willAccept ? 'is-preview' : ''} ${d.apply_status === 'done' ? 'is-applied' : ''}`} onClick={onSelect}>
+    <li className={`pair status-${d.status} decision-${d.decision} ${selected ? 'is-selected' : ''} ${willAccept ? 'is-preview' : ''} ${d.apply_status === 'done' ? 'is-applied' : ''} ${isLeaving ? 'is-leaving' : ''}`} onClick={onSelect}>
       <div className="head">
         <span className="verdict">{t.status[d.status]}</span>
         {score !== null && <span className="match">{t.match(score)}</span>}

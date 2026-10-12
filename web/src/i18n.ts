@@ -8,7 +8,7 @@ export const LANGS: Lang[] = ['ko', 'en'];
 type Kind = 'album' | 'artist' | 'track';
 type Status = 'auto' | 'review' | 'substitute' | 'not_found' | 'exists';
 type Decision = 'pending' | 'accept' | 'skip' | 'preserve';
-type Filter = 'todo' | 'auto' | 'not_found' | 'exists' | 'all';
+type Filter = 'todo' | 'accept' | 'preserve' | 'skip' | 'all';
 
 // Korean particle: '이라' after a final consonant, '라' after a vowel ('이라' for non-Hangul).
 function ira(word: string) {
@@ -24,7 +24,7 @@ const ko = {
   steps: ['연결', '불러오기', '매칭', '검토', '저장', '결과'],
   kind: {album: '앨범', artist: '아티스트', track: '좋아요 곡'} as Record<Kind, string>,
   status: {review: '확인 필요', substitute: '다른 버전', auto: '자동으로 맞춤', not_found: 'Spotify에 없음', exists: '이미 있음'} as Record<Status, string>,
-  filter: {todo: '확인 필요', auto: '자동으로 맞춤', not_found: 'Spotify에 없음', exists: '이미 있음', all: '전체'} as Record<Filter, string>,
+  filter: {todo: '확인 전', accept: '저장 예정', preserve: '보관', skip: '건너뜀', all: '전체'} as Record<Filter, string>,
   decisionNote: {pending: '', accept: 'Spotify에 저장할게요', skip: '옮기지 않아요', preserve: 'YT Music 보관 목록에 모아둘게요'} as Record<Decision, string>,
 
   headline: (kind: string, n: number) => (n ? `${kind} ${n}개만 확인해 주세요` : `${kind}는 확인할 게 없어요`),
@@ -117,7 +117,7 @@ const en: Messages = {
   steps: ['Connect', 'Load', 'Match', 'Review', 'Save', 'Done'],
   kind: {album: 'Albums', artist: 'Artists', track: 'Liked songs'},
   status: {review: 'Needs a look', substitute: 'Different version', auto: 'Matched', not_found: 'Not on Spotify', exists: 'Already saved'},
-  filter: {todo: 'Needs a look', auto: 'Matched', not_found: 'Not on Spotify', exists: 'Already saved', all: 'All'},
+  filter: {todo: 'To check', accept: 'To save', preserve: 'Keep', skip: 'Skipped', all: 'All'},
   decisionNote: {pending: '', accept: 'Will save to Spotify', skip: "Won't move", preserve: 'Will keep in a YT Music list'},
 
   headline: (kind, n) => (n ? `Just ${n} ${kind.toLowerCase()} to check` : `No ${kind.toLowerCase()} to check`),
