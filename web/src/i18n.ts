@@ -102,7 +102,7 @@ const ko = {
     album_title_match: '앨범명 일치', artist_match: '아티스트 일치', year_match: '연도 일치',
     already_saved: '이미 내 Spotify에 있음', alias_match: '별칭으로 일치', romanized_artist: '아티스트 로마자 표기',
     track_count_match: '트랙 수 일치', name_match: '이름 일치', top_result: '검색 1위',
-    title_match: '곡명 일치', album_match: '앨범 일치', artist_from_title: '제목에서 아티스트 추출',
+    title_match: '제목 일치', album_match: '앨범 일치', artist_from_title: '제목에서 아티스트 추출',
     length_diff: (n: number) => `길이 ${n}초 차`,
     title_differs: '제목 다름', artist_differs: '아티스트 다름', year_differs: (y: number) => `발매연도 ${y}`, name_differs: '이름 다름',
   },

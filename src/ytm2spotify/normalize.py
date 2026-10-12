@@ -39,6 +39,9 @@ def norm(s: str | None) -> str:
     if not s:
         return ""
     s = unicodedata.normalize("NFKC", s).lower()
+    # drop accents on Latin letters (CRÈME = CREME) without touching Hangul/Kana syllables
+    s = "".join(c for c in unicodedata.normalize("NFD", s) if not unicodedata.combining(c))
+    s = unicodedata.normalize("NFC", s)
     s = s.replace("&", "and")
     return _KEEP.sub("", s).replace("_", "")
 

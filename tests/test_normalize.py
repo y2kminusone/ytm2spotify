@@ -4,6 +4,8 @@ from ytm2spotify.normalize import aliases, clean_title, norm, parse_upload_title
 def test_norm_ignores_spaces_and_case():
     assert norm("서울전자음악단") == norm("서울 전자 음악단")
     assert norm("PinkPantheress") == norm("pinkpantheress")
+    assert norm("CRÈME") == norm("CREME")
+    assert norm("한국어") == "한국어"  # Hangul must survive accent stripping
 
 
 def test_aliases_split_brackets_and_scripts():
