@@ -1,6 +1,6 @@
 # ytm2spotify — PRD (v0.1 초안)
 
-> 상태: **v0.2 (Spike 반영)** · 작성일: 2026-10-12 · Spike 결과: [`docs/spikes/m0-report.md`](spikes/m0-report.md)
+> 상태: **중단됨** ([ADR-006](adr/006-stop-project.md)) · 최종 v0.2 (Spike 반영) · 작성일: 2026-10-12 · Spike 결과: [`docs/spikes/m0-report.md`](spikes/m0-report.md)
 
 ## 1. 배경 / 문제
 
